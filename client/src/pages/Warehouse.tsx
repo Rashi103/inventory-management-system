@@ -1,138 +1,462 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import "./Warehouse.css";
 
 interface Warehouse {
   id: number;
   name: string;
-  location: string;
-  manager: string;
-  contact: string;
-  capacity: number;
-  status: "Active" | "Inactive";
+  location: string | null;
+  managerName: string | null;
+  isActive: boolean;
+  inventories: { id: number }[];
+  stockTransactions: { id: number }[];
+  goodsReceipts: { id: number }[];
 }
 
-function Warehouse() {
-  const [search, setSearch] = useState("");
+const Warehouse = () => {
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const warehouses: Warehouse[] = [
-    {
-      id: 1,
-      name: "Main Warehouse",
-      location: "Bhopal",
-      manager: "Rahul Sharma",
-      contact: "9876543210",
-      capacity: 1000,
-      status: "Active",
-    },
-    {
-      id: 2,
-      name: "Secondary Warehouse",
-      location: "Indore",
-      manager: "Amit Verma",
-      contact: "9876501234",
-      capacity: 750,
-      status: "Active",
-    },
-    {
-      id: 3,
-      name: "Old Warehouse",
-      location: "Jabalpur",
-      manager: "Priya Singh",
-      contact: "9988776655",
-      capacity: 500,
-      status: "Inactive",
-    },
-  ];
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  const filteredWarehouses = warehouses.filter(
-    (warehouse) =>
-      warehouse.name.toLowerCase().includes(search.toLowerCase()) ||
-      warehouse.location.toLowerCase().includes(search.toLowerCase()) ||
-      warehouse.manager.toLowerCase().includes(search.toLowerCase())
+  // =========================
+  // FETCH WAREHOUSES
+  // =========================
+
+  const fetchWarehouses = async () => {
+    try {
+      setLoading(true);
+
+      const response = await axios.get(
+        "http://localhost:5000/api/warehouses"
+      );
+
+      setWarehouses(response.data);
+      setError("");
+    } catch (error) {
+      console.error("Error fetching warehouses:", error);
+
+      setError(
+        "Failed to load warehouses. Please make sure the server is running."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWarehouses();
+  }, []);
+
+  // =========================
+  // FILTER
+  // =========================
+
+  const filteredWarehouses = useMemo(() => {
+    const search = searchTerm.toLowerCase().trim();
+
+    return warehouses.filter((warehouse) => {
+      const matchesSearch =
+        !search ||
+        warehouse.name.toLowerCase().includes(search) ||
+        (warehouse.location || "")
+          .toLowerCase()
+          .includes(search) ||
+        (warehouse.managerName || "")
+          .toLowerCase()
+          .includes(search);
+
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" &&
+          warehouse.isActive) ||
+        (statusFilter === "inactive" &&
+          !warehouse.isActive);
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [warehouses, searchTerm, statusFilter]);
+
+  // =========================
+  // SUMMARY
+  // =========================
+
+  const activeWarehouses = warehouses.filter(
+    (warehouse) => warehouse.isActive
+  ).length;
+
+  const inactiveWarehouses = warehouses.filter(
+    (warehouse) => !warehouse.isActive
+  ).length;
+
+  const totalInventoryRecords = warehouses.reduce(
+    (total, warehouse) =>
+      total + (warehouse.inventories?.length || 0),
+    0
+  );
+
+  const totalTransactions = warehouses.reduce(
+    (total, warehouse) =>
+      total +
+      (warehouse.stockTransactions?.length || 0),
+    0
+  );
+
+  const totalGoodsReceipts = warehouses.reduce(
+    (total, warehouse) =>
+      total +
+      (warehouse.goodsReceipts?.length || 0),
+    0
   );
 
   return (
     <div className="warehouse-page">
-      <div className="page-heading">
+
+      {/* HEADER */}
+
+      <div className="warehouse-header">
+
         <div>
-          <h2>Warehouses</h2>
-          <p>Manage your warehouses and storage locations.</p>
+          <div className="warehouse-breadcrumb">
+            Dashboard / Warehouse
+          </div>
+
+          <h1>Warehouses</h1>
+
+          <p>
+            Manage storage locations, inventory records
+            and warehouse activity.
+          </p>
         </div>
 
-        <button className="add-product-btn">
-          + Add Warehouse
-        </button>
       </div>
 
-      <div className="products-card">
-        <div className="products-toolbar">
-          <input
-            type="text"
-            placeholder="Search warehouses..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      {/* STATS */}
+
+      <div className="warehouse-stats">
+
+        <div className="warehouse-stat-card">
+          <div className="warehouse-stat-icon purple">
+            🏢
+          </div>
+
+          <div>
+            <span>Total Warehouses</span>
+            <strong>{warehouses.length}</strong>
+          </div>
         </div>
 
-        <div className="table-container">
-          <table className="products-table">
-            <thead>
-              <tr>
-                <th>Warehouse</th>
-                <th>Location</th>
-                <th>Manager</th>
-                <th>Contact</th>
-                <th>Capacity</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
+        <div className="warehouse-stat-card">
+          <div className="warehouse-stat-icon green">
+            ✓
+          </div>
 
-            <tbody>
-              {filteredWarehouses.map((warehouse) => (
-                <tr key={warehouse.id}>
-                  <td>
-                    <strong>{warehouse.name}</strong>
-                  </td>
+          <div>
+            <span>Active Warehouses</span>
+            <strong>{activeWarehouses}</strong>
+          </div>
+        </div>
 
-                  <td>{warehouse.location}</td>
-                  <td>{warehouse.manager}</td>
-                  <td>{warehouse.contact}</td>
-                  <td>{warehouse.capacity} units</td>
+        <div className="warehouse-stat-card">
+          <div className="warehouse-stat-icon blue">
+            📦
+          </div>
 
-                  <td>
-                    <span
-                      className={`status-badge ${
-                        warehouse.status === "Active"
-                          ? "in-stock"
-                          : "out-of-stock"
-                      }`}
-                    >
-                      {warehouse.status}
-                    </span>
-                  </td>
+          <div>
+            <span>Inventory Records</span>
+            <strong>{totalInventoryRecords}</strong>
+          </div>
+        </div>
 
-                  <td>
-                    <div className="action-buttons">
-                      <button className="edit-btn">Edit</button>
-                      <button className="delete-btn">Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+        <div className="warehouse-stat-card">
+          <div className="warehouse-stat-icon orange">
+            ↗
+          </div>
 
-              {filteredWarehouses.length === 0 && (
+          <div>
+            <span>Stock Transactions</span>
+            <strong>{totalTransactions}</strong>
+          </div>
+        </div>
+
+      </div>
+
+      {/* SUMMARY STRIP */}
+
+      <div className="warehouse-summary-strip">
+
+        <div className="warehouse-summary-item">
+          <span>Active</span>
+          <strong>{activeWarehouses}</strong>
+        </div>
+
+        <div className="warehouse-summary-divider"></div>
+
+        <div className="warehouse-summary-item">
+          <span>Inactive</span>
+          <strong>{inactiveWarehouses}</strong>
+        </div>
+
+        <div className="warehouse-summary-divider"></div>
+
+        <div className="warehouse-summary-item">
+          <span>Goods Receipts</span>
+          <strong>{totalGoodsReceipts}</strong>
+        </div>
+
+        <div className="warehouse-summary-divider"></div>
+
+        <div className="warehouse-summary-item">
+          <span>Showing</span>
+          <strong>
+            {filteredWarehouses.length} warehouses
+          </strong>
+        </div>
+
+      </div>
+
+      {/* WAREHOUSE LIST */}
+
+      <div className="warehouse-list-card">
+
+        <div className="warehouse-list-header">
+
+          <div>
+            <h2>Warehouse Locations</h2>
+
+            <p>
+              {filteredWarehouses.length} of{" "}
+              {warehouses.length} warehouses
+            </p>
+          </div>
+
+          <div className="warehouse-filters">
+
+            <div className="warehouse-search">
+
+              <span>⌕</span>
+
+              <input
+                type="text"
+                placeholder="Search warehouses..."
+                value={searchTerm}
+                onChange={(e) =>
+                  setSearchTerm(e.target.value)
+                }
+              />
+
+            </div>
+
+            <select
+              value={statusFilter}
+              onChange={(e) =>
+                setStatusFilter(e.target.value)
+              }
+            >
+              <option value="all">
+                All Status
+              </option>
+
+              <option value="active">
+                Active
+              </option>
+
+              <option value="inactive">
+                Inactive
+              </option>
+            </select>
+
+          </div>
+
+        </div>
+
+        {filteredWarehouses.length === 0 ? (
+          <div className="warehouse-empty">
+
+            <div className="warehouse-empty-icon">
+              🏢
+            </div>
+
+            <h3>No warehouses found</h3>
+
+            <p>
+              Try changing your search or status filter.
+            </p>
+
+          </div>
+        ) : (
+          <div className="warehouse-table-wrapper">
+
+            <table className="warehouse-table">
+
+              <thead>
                 <tr>
-                  <td colSpan={7} className="no-products">
-                    No warehouses found.
-                  </td>
+                  <th>Warehouse</th>
+                  <th>Location</th>
+                  <th>Manager</th>
+                  <th>Inventory</th>
+                  <th>Transactions</th>
+                  <th>Receipts</th>
+                  <th>Status</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+
+              <tbody>
+
+                {filteredWarehouses.map(
+                  (warehouse) => (
+
+                    <tr key={warehouse.id}>
+
+                      {/* WAREHOUSE */}
+
+                      <td>
+                        <div className="warehouse-profile">
+
+                          <div className="warehouse-icon">
+                            🏢
+                          </div>
+
+                          <div>
+                            <strong>
+                              {warehouse.name}
+                            </strong>
+
+                            <span>
+                              Warehouse ID:{" "}
+                              {warehouse.id}
+                            </span>
+                          </div>
+
+                        </div>
+                      </td>
+
+                      {/* LOCATION */}
+
+                      <td>
+                        <div className="warehouse-location">
+                          <span className="location-symbol">
+                            ⌖
+                          </span>
+
+                          <span>
+                            {warehouse.location ||
+                              "Not specified"}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* MANAGER */}
+
+                      <td>
+                        <div className="warehouse-manager">
+
+                          <div className="manager-avatar">
+                            {(
+                              warehouse.managerName ||
+                              "U"
+                            )
+                              .charAt(0)
+                              .toUpperCase()}
+                          </div>
+
+                          <span>
+                            {warehouse.managerName ||
+                              "Not assigned"}
+                          </span>
+
+                        </div>
+                      </td>
+
+                      {/* INVENTORY */}
+
+                      <td>
+                        <span className="warehouse-count purple-count">
+                          {warehouse.inventories?.length ||
+                            0}
+                        </span>
+                      </td>
+
+                      {/* TRANSACTIONS */}
+
+                      <td>
+                        <span className="warehouse-count blue-count">
+                          {warehouse.stockTransactions
+                            ?.length || 0}
+                        </span>
+                      </td>
+
+                      {/* RECEIPTS */}
+
+                      <td>
+                        <span className="warehouse-count orange-count">
+                          {warehouse.goodsReceipts
+                            ?.length || 0}
+                        </span>
+                      </td>
+
+                      {/* STATUS */}
+
+                      <td>
+                        <span
+                          className={`warehouse-status ${
+                            warehouse.isActive
+                              ? "active"
+                              : "inactive"
+                          }`}
+                        >
+                          <span></span>
+
+                          {warehouse.isActive
+                            ? "Active"
+                            : "Inactive"}
+                        </span>
+                      </td>
+
+                    </tr>
+
+                  )
+                )}
+
+              </tbody>
+
+            </table>
+
+          </div>
+        )}
+
       </div>
+
+      {/* INFO STRIP */}
+
+      <div className="warehouse-info-strip">
+
+        <div className="warehouse-info-icon">
+          📦
+        </div>
+
+        <div>
+          <strong>Warehouse Activity</strong>
+
+          <p>
+            Each warehouse is connected with inventory,
+            stock transactions and goods receipts.
+          </p>
+        </div>
+
+        <div className="warehouse-info-summary">
+          <span>Inventory Records</span>
+
+          <strong>{totalInventoryRecords}</strong>
+        </div>
+
+      </div>
+
     </div>
   );
-}
+};
 
 export default Warehouse;
+

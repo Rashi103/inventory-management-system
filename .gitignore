@@ -20,3 +20,9 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Server local tool folders
+server/.agents/
+server/.claude/
+server/.cursor/
+server/.devin/

@@ -12,7 +12,7 @@ import Purchases from "./pages/Purchases";
 import Sales from "./pages/Sales";
 import Returns from "./pages/Returns";
 import Employees from "./pages/Employees";
-
+import Reports from "./pages/Reports";
 
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
@@ -41,6 +41,7 @@ function App() {
               <Route path="/sales" element={<Sales />} />
               <Route path="/returns" element={<Returns />} />
               <Route path="/employees" element={<Employees />} />
+              <Route path="/reports" element={<Reports />} />
             </Routes>
           </main>
         </div>

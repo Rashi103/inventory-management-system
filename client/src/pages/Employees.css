@@ -1,0 +1,780 @@
+/* ================================
+   EMPLOYEES PAGE
+================================ */
+
+.employees-page {
+  padding: 28px 32px 40px;
+  background: #f7f8fc;
+  min-height: calc(100vh - 70px);
+}
+
+/* ================================
+   HEADER
+================================ */
+
+.employees-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.employees-breadcrumb {
+  font-size: 13px;
+  color: #8b91a7;
+  margin-bottom: 8px;
+}
+
+.employees-breadcrumb span {
+  margin: 0 6px;
+  color: #b5b9c8;
+}
+
+.employees-header h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  color: #202336;
+  letter-spacing: -0.5px;
+}
+
+.employees-header p {
+  margin: 7px 0 0;
+  color: #7c8298;
+  font-size: 14px;
+}
+
+/* ================================
+   ADD BUTTON
+================================ */
+
+.employees-add-button {
+  border: none;
+  background: #5b5bd6;
+  color: white;
+  padding: 12px 18px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  box-shadow: 0 5px 14px rgba(91, 91, 214, 0.18);
+  transition: 0.2s ease;
+}
+
+.employees-add-button:hover {
+  background: #4d4dc4;
+  transform: translateY(-1px);
+}
+
+.add-icon {
+  font-size: 20px;
+  line-height: 14px;
+}
+
+/* ================================
+   STAT CARDS
+================================ */
+
+.employee-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.employee-stat-card {
+  background: white;
+  border: 1px solid #eceef5;
+  border-radius: 12px;
+  padding: 20px;
+
+  display: flex;
+  align-items: center;
+  gap: 15px;
+
+  box-shadow: 0 3px 12px rgba(31, 35, 55, 0.04);
+}
+
+.employee-stat-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.employee-stat-icon.total {
+  background: #eeeeff;
+  color: #5b5bd6;
+}
+
+.employee-stat-icon.active {
+  background: #e9f8f0;
+  color: #22945d;
+}
+
+.employee-stat-icon.inactive {
+  background: #fff1f1;
+  color: #d95d5d;
+}
+
+.employee-stat-icon.login {
+  background: #fff5e8;
+  color: #d48626;
+}
+
+.employee-stat-card span {
+  display: block;
+  color: #858ba0;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.employee-stat-card strong {
+  color: #25283a;
+  font-size: 23px;
+  font-weight: 700;
+}
+
+/* ================================
+   ADD FORM CARD
+================================ */
+
+.employee-form-card {
+  background: white;
+  border: 1px solid #e8eaf2;
+  border-radius: 13px;
+  margin-bottom: 24px;
+  padding: 24px;
+
+  box-shadow: 0 5px 18px rgba(31, 35, 55, 0.05);
+}
+
+.employee-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.employee-form-header h2 {
+  margin: 0;
+  color: #25283a;
+  font-size: 18px;
+}
+
+.employee-form-header p {
+  margin: 5px 0 0;
+  color: #888da1;
+  font-size: 13px;
+}
+
+.employee-close-button {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 7px;
+  background: #f2f3f7;
+  color: #6f7488;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.employee-close-button:hover {
+  background: #e8e9ef;
+}
+
+/* ================================
+   FORM
+================================ */
+
+.employee-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px 20px;
+}
+
+.employee-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.employee-form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.employee-form-group label {
+  color: #4c5062;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 7px;
+}
+
+.employee-form-group label span {
+  color: #df5757;
+}
+
+.employee-form-group input,
+.employee-form-group select {
+  width: 100%;
+  box-sizing: border-box;
+
+  border: 1px solid #dfe2eb;
+  background: #fafbfc;
+
+  border-radius: 8px;
+  padding: 11px 12px;
+
+  font-size: 13px;
+  color: #303347;
+
+  outline: none;
+  transition: 0.2s ease;
+}
+
+.employee-form-group input::placeholder {
+  color: #a3a7b7;
+}
+
+.employee-form-group input:focus,
+.employee-form-group select:focus {
+  border-color: #7777df;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(91, 91, 214, 0.08);
+}
+
+.employee-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #eef0f5;
+}
+
+.employee-cancel-button,
+.employees-save-button {
+  border: none;
+  padding: 10px 17px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.employee-cancel-button {
+  background: #f1f2f6;
+  color: #62677a;
+}
+
+.employee-cancel-button:hover {
+  background: #e7e8ee;
+}
+
+.employees-save-button {
+  background: #5b5bd6;
+  color: white;
+}
+
+.employees-save-button:hover {
+  background: #4d4dc4;
+}
+
+/* ================================
+   EMPLOYEE LIST
+================================ */
+
+.employee-list-card {
+  background: white;
+  border: 1px solid #e8eaf2;
+  border-radius: 13px;
+
+  box-shadow: 0 5px 18px rgba(31, 35, 55, 0.04);
+
+  overflow: hidden;
+}
+
+.employee-list-header {
+  padding: 22px 24px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  gap: 20px;
+
+  border-bottom: 1px solid #eceef4;
+}
+
+.employee-list-header h2 {
+  margin: 0;
+  color: #25283a;
+  font-size: 17px;
+}
+
+.employee-list-header p {
+  margin: 5px 0 0;
+  color: #9297a8;
+  font-size: 12px;
+}
+
+/* ================================
+   SEARCH
+================================ */
+
+.employee-search {
+  width: 310px;
+  height: 38px;
+
+  border: 1px solid #dfe2eb;
+  border-radius: 8px;
+
+  background: #fafbfc;
+
+  display: flex;
+  align-items: center;
+
+  padding: 0 10px;
+}
+
+.employee-search > span {
+  color: #9499aa;
+  font-size: 21px;
+  transform: rotate(-20deg);
+}
+
+.employee-search input {
+  flex: 1;
+
+  border: none;
+  outline: none;
+
+  background: transparent;
+
+  padding: 0 8px;
+
+  color: #35384a;
+  font-size: 12px;
+}
+
+.employee-search input::placeholder {
+  color: #a0a4b3;
+}
+
+.employee-search button {
+  border: none;
+  background: transparent;
+  color: #989dac;
+
+  font-size: 17px;
+
+  cursor: pointer;
+}
+
+/* ================================
+   TABLE
+================================ */
+
+.employee-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.employee-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.employee-table thead {
+  background: #fafbfc;
+}
+
+.employee-table th {
+  padding: 13px 20px;
+
+  text-align: left;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  letter-spacing: 0.5px;
+
+  color: #9297a8;
+
+  border-bottom: 1px solid #eceef4;
+}
+
+.employee-table td {
+  padding: 16px 20px;
+
+  border-bottom: 1px solid #f0f1f5;
+
+  color: #45495c;
+
+  font-size: 12px;
+}
+
+.employee-table tbody tr {
+  transition: 0.15s ease;
+}
+
+.employee-table tbody tr:hover {
+  background: #fbfbfe;
+}
+
+.employee-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ================================
+   EMPLOYEE PROFILE
+================================ */
+
+.employee-profile {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.employee-avatar {
+  width: 38px;
+  height: 38px;
+
+  border-radius: 50%;
+
+  background: #eeeeff;
+  color: #5b5bd6;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  flex-shrink: 0;
+}
+
+.employee-profile strong {
+  display: block;
+  color: #2d3042;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.employee-profile span {
+  display: block;
+  margin-top: 3px;
+  color: #a0a4b3;
+  font-size: 10px;
+}
+
+/* ================================
+   CONTACT
+================================ */
+
+.employee-contact span {
+  display: block;
+}
+
+.employee-contact span:first-child {
+  color: #484c5e;
+  margin-bottom: 4px;
+}
+
+.employee-contact span:last-child {
+  color: #9a9ead;
+  font-size: 10px;
+}
+
+/* ================================
+   ROLE
+================================ */
+
+.employee-role {
+  display: inline-block;
+
+  padding: 5px 9px;
+
+  border-radius: 6px;
+
+  background: #f0f0ff;
+  color: #5a5ac8;
+
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* ================================
+   LOGIN
+================================ */
+
+.login-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.login-dot {
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+
+  background: #32a66c;
+}
+
+.login-info strong {
+  display: block;
+
+  color: #484c5e;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.login-info small {
+  display: block;
+
+  color: #9da1b0;
+  font-size: 9px;
+
+  margin-top: 2px;
+}
+
+.no-login {
+  color: #a1a5b4;
+  font-size: 11px;
+}
+
+/* ================================
+   STATUS
+================================ */
+
+.employee-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 5px 9px;
+
+  border-radius: 20px;
+
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.employee-status > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-active {
+  background: #eaf8f1;
+  color: #25865b;
+}
+
+.status-active > span {
+  background: #32a66c;
+}
+
+.status-inactive {
+  background: #fff0f0;
+  color: #c85d5d;
+}
+
+.status-inactive > span {
+  background: #d96b6b;
+}
+
+/* ================================
+   ACTION
+================================ */
+
+.employee-action-button {
+  width: 30px;
+  height: 30px;
+
+  border: none;
+  border-radius: 7px;
+
+  background: transparent;
+
+  color: #9297a8;
+
+  font-size: 18px;
+
+  cursor: pointer;
+}
+
+.employee-action-button:hover {
+  background: #f0f1f6;
+  color: #55596d;
+}
+
+/* ================================
+   EMPTY STATE
+================================ */
+
+.employee-empty {
+  height: 220px;
+  text-align: center !important;
+}
+
+.employee-empty > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  height: 100%;
+}
+
+.employee-empty span {
+  font-size: 30px;
+  color: #b2b6c5;
+  margin-bottom: 8px;
+}
+
+.employee-empty strong {
+  color: #565a6c;
+  font-size: 14px;
+}
+
+.employee-empty p {
+  color: #999eaf;
+  font-size: 11px;
+  margin-top: 5px;
+}
+
+/* ================================
+   LOADING
+================================ */
+
+.employees-loading {
+  min-height: 400px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  color: #7f8498;
+}
+
+.employees-spinner {
+  width: 28px;
+  height: 28px;
+
+  border: 3px solid #e5e6ef;
+  border-top-color: #5b5bd6;
+
+  border-radius: 50%;
+
+  animation: employeeSpin 0.8s linear infinite;
+
+  margin-bottom: 12px;
+}
+
+@keyframes employeeSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ================================
+   ERROR
+================================ */
+
+.employees-error {
+  background: #fff1f1;
+  color: #c45d5d;
+
+  border: 1px solid #f2d5d5;
+
+  border-radius: 10px;
+
+  padding: 18px;
+}
+
+/* ================================
+   RESPONSIVE
+================================ */
+
+@media (max-width: 1100px) {
+  .employee-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .employee-search {
+    width: 260px;
+  }
+}
+
+@media (max-width: 700px) {
+  .employees-page {
+    padding: 20px 16px 30px;
+  }
+
+  .employees-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .employees-add-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .employee-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .employee-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .employee-form-group.full-width {
+    grid-column: auto;
+  }
+
+  .employee-list-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .employee-search {
+    width: 100%;
+  }
+}
+.employee-action-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.employee-status-action {
+  margin-left: 8px;
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.employee-status-action:hover {
+  background: #f5f3ff;
+}

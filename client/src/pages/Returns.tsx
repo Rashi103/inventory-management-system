@@ -1,194 +1,538 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import "./Returns.css";
 
 interface ReturnRecord {
   id: number;
   returnNumber: string;
-  type: "Sales Return" | "Purchase Return";
+  type: string;
   referenceNumber: string;
   party: string;
   returnDate: string;
   items: number;
   amount: number;
-  status: "Completed" | "Pending" | "Cancelled";
+  status: string;
 }
 
-function Returns() {
-  const [search, setSearch] = useState("");
-  const [returnType, setReturnType] = useState<
-    "All" | "Sales Return" | "Purchase Return"
-  >("All");
+const Returns = () => {
+  const [returns, setReturns] = useState<ReturnRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const returns: ReturnRecord[] = [
-    {
-      id: 1,
-      returnNumber: "SR-2026-001",
-      type: "Sales Return",
-      referenceNumber: "INV-2026-002",
-      party: "Priya Singh",
-      returnDate: "2026-09-22",
-      items: 2,
-      amount: 850,
-      status: "Completed",
-    },
-    {
-      id: 2,
-      returnNumber: "PR-2026-001",
-      type: "Purchase Return",
-      referenceNumber: "PO-2026-001",
-      party: "Tata Consumer Products",
-      returnDate: "2026-09-23",
-      items: 3,
-      amount: 4200,
-      status: "Pending",
-    },
-    {
-      id: 3,
-      returnNumber: "SR-2026-002",
-      type: "Sales Return",
-      referenceNumber: "INV-2026-003",
-      party: "Amit Verma",
-      returnDate: "2026-09-24",
-      items: 1,
-      amount: 450,
-      status: "Completed",
-    },
-    {
-      id: 4,
-      returnNumber: "PR-2026-002",
-      type: "Purchase Return",
-      referenceNumber: "PO-2026-003",
-      party: "Global Distributors",
-      returnDate: "2026-09-25",
-      items: 2,
-      amount: 1800,
-      status: "Cancelled",
-    },
-  ];
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
 
-  const filteredReturns = returns.filter((item) => {
-    const matchesSearch =
-      item.returnNumber.toLowerCase().includes(search.toLowerCase()) ||
-      item.referenceNumber.toLowerCase().includes(search.toLowerCase()) ||
-      item.party.toLowerCase().includes(search.toLowerCase());
+  // =========================
+  // FETCH RETURNS
+  // =========================
 
-    const matchesType =
-      returnType === "All" || item.type === returnType;
+  const fetchReturns = async () => {
+    try {
+      setLoading(true);
 
-    return matchesSearch && matchesType;
-  });
+      const response = await axios.get(
+        "http://localhost:5000/api/returns"
+      );
+
+      setReturns(response.data);
+      setError("");
+    } catch (error) {
+      console.error("Error fetching returns:", error);
+
+      setError(
+        "Failed to load returns. Please make sure the server is running."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReturns();
+  }, []);
+
+  // =========================
+  // FILTER
+  // =========================
+
+  const filteredReturns = useMemo(() => {
+    const search = searchTerm.toLowerCase().trim();
+
+    return returns.filter((item) => {
+      const matchesSearch =
+        !search ||
+        item.returnNumber.toLowerCase().includes(search) ||
+        item.referenceNumber.toLowerCase().includes(search) ||
+        item.party.toLowerCase().includes(search);
+
+      const matchesType =
+        typeFilter === "all" ||
+        item.type.toLowerCase() ===
+          typeFilter.toLowerCase();
+
+      return matchesSearch && matchesType;
+    });
+  }, [returns, searchTerm, typeFilter]);
+
+  // =========================
+  // SUMMARY
+  // =========================
+
+  const salesReturns = returns.filter(
+    (item) => item.type === "Sales Return"
+  );
+
+  const purchaseReturns = returns.filter(
+    (item) => item.type === "Purchase Return"
+  );
+
+  const totalReturnedItems = returns.reduce(
+    (total, item) =>
+      total + Number(item.items || 0),
+    0
+  );
+
+  const totalReturnAmount = returns.reduce(
+    (total, item) =>
+      total + Number(item.amount || 0),
+    0
+  );
+
+  const salesReturnAmount = salesReturns.reduce(
+    (total, item) =>
+      total + Number(item.amount || 0),
+    0
+  );
+
+  const purchaseReturnAmount = purchaseReturns.reduce(
+    (total, item) =>
+      total + Number(item.amount || 0),
+    0
+  );
+
+  // =========================
+  // DATE
+  // =========================
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString(
+      "en-IN",
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }
+    );
+  };
+
+  // =========================
+  // TYPE CLASS
+  // =========================
+
+  const getTypeClass = (type: string) => {
+    return type === "Sales Return"
+      ? "sales-return"
+      : "purchase-return";
+  };
+
+  // =========================
+  // LOADING
+  // =========================
+
+  if (loading) {
+    return (
+      <div className="returns-page">
+        <div className="returns-loading">
+          <div className="returns-spinner"></div>
+          <p>Loading returns...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================
+  // ERROR
+  // =========================
+
+  if (error) {
+    return (
+      <div className="returns-page">
+        <div className="returns-error">
+          <div className="returns-error-icon">!</div>
+
+          <h2>Returns unavailable</h2>
+
+          <p>{error}</p>
+
+          <button
+            onClick={() => window.location.reload()}
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="returns-page">
-      <div className="page-heading">
+
+      {/* HEADER */}
+
+      <div className="returns-header">
+
         <div>
-          <h2>Returns</h2>
-          <p>Manage sales returns and purchase returns.</p>
+          <div className="returns-breadcrumb">
+            Dashboard / Returns
+          </div>
+
+          <h1>Returns</h1>
+
+          <p>
+            Track sales returns, purchase returns and
+            returned stock.
+          </p>
         </div>
 
-        <button className="add-product-btn">
-          + Create Return
-        </button>
       </div>
 
-      <div className="products-card">
-        <div className="products-toolbar">
-          <input
-            type="text"
-            placeholder="Search return number, reference or party..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      {/* STATS */}
 
-          <select
-            value={returnType}
-            onChange={(e) =>
-              setReturnType(
-                e.target.value as
-                  | "All"
-                  | "Sales Return"
-                  | "Purchase Return"
-              )
-            }
-          >
-            <option value="All">All Returns</option>
-            <option value="Sales Return">Sales Returns</option>
-            <option value="Purchase Return">Purchase Returns</option>
-          </select>
+      <div className="returns-stats">
+
+        <div className="return-stat-card">
+          <div className="return-stat-icon purple">
+            ↩
+          </div>
+
+          <div>
+            <span>Total Returns</span>
+            <strong>{returns.length}</strong>
+          </div>
         </div>
 
-        <div className="table-container">
-          <table className="products-table">
-            <thead>
-              <tr>
-                <th>Return Number</th>
-                <th>Type</th>
-                <th>Reference</th>
-                <th>Customer / Supplier</th>
-                <th>Return Date</th>
-                <th>Items</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
+        <div className="return-stat-card">
+          <div className="return-stat-icon red">
+            ↓
+          </div>
 
-            <tbody>
-              {filteredReturns.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    <strong>{item.returnNumber}</strong>
-                  </td>
+          <div>
+            <span>Returned Items</span>
+            <strong>{totalReturnedItems}</strong>
+          </div>
+        </div>
 
-                  <td>{item.type}</td>
+        <div className="return-stat-card">
+          <div className="return-stat-icon orange">
+            ₹
+          </div>
 
-                  <td>{item.referenceNumber}</td>
+          <div>
+            <span>Total Return Value</span>
+            <strong>
+              ₹{totalReturnAmount.toLocaleString("en-IN")}
+            </strong>
+          </div>
+        </div>
 
-                  <td>{item.party}</td>
+        <div className="return-stat-card">
+          <div className="return-stat-icon green">
+            ✓
+          </div>
 
-                  <td>{item.returnDate}</td>
+          <div>
+            <span>Completed</span>
+            <strong>
+              {
+                returns.filter(
+                  (item) =>
+                    item.status.toLowerCase() ===
+                    "completed"
+                ).length
+              }
+            </strong>
+          </div>
+        </div>
 
-                  <td>{item.items}</td>
+      </div>
 
-                  <td>
-                    ₹{item.amount.toLocaleString("en-IN")}
-                  </td>
+      {/* SUMMARY STRIP */}
 
-                  <td>
-                    <span
-                      className={`status-badge ${
-                        item.status === "Completed"
-                          ? "in-stock"
-                          : item.status === "Pending"
-                          ? "low-stock"
-                          : "out-of-stock"
-                      }`}
-                    >
-                      {item.status}
-                    </span>
-                  </td>
+      <div className="returns-summary-strip">
 
-                  <td>
-                    <div className="action-buttons">
-                      <button className="edit-btn">View</button>
-                      <button className="delete-btn">Cancel</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+        <div className="returns-summary-item">
+          <span>Sales Returns</span>
+          <strong>{salesReturns.length}</strong>
+        </div>
 
-              {filteredReturns.length === 0 && (
+        <div className="returns-summary-divider"></div>
+
+        <div className="returns-summary-item">
+          <span>Sales Return Value</span>
+          <strong>
+            ₹{salesReturnAmount.toLocaleString("en-IN")}
+          </strong>
+        </div>
+
+        <div className="returns-summary-divider"></div>
+
+        <div className="returns-summary-item">
+          <span>Purchase Returns</span>
+          <strong>{purchaseReturns.length}</strong>
+        </div>
+
+        <div className="returns-summary-divider"></div>
+
+        <div className="returns-summary-item">
+          <span>Purchase Return Value</span>
+          <strong>
+            ₹{purchaseReturnAmount.toLocaleString("en-IN")}
+          </strong>
+        </div>
+
+        <div className="returns-summary-divider"></div>
+
+        <div className="returns-summary-item">
+          <span>Showing</span>
+          <strong>
+            {filteredReturns.length} returns
+          </strong>
+        </div>
+
+      </div>
+
+      {/* RETURNS LIST */}
+
+      <div className="returns-list-card">
+
+        <div className="returns-list-header">
+
+          <div>
+            <h2>Return Transactions</h2>
+
+            <p>
+              {filteredReturns.length} of{" "}
+              {returns.length} return records
+            </p>
+          </div>
+
+          <div className="returns-filters">
+
+            <div className="returns-search">
+
+              <span>⌕</span>
+
+              <input
+                type="text"
+                placeholder="Search returns..."
+                value={searchTerm}
+                onChange={(e) =>
+                  setSearchTerm(e.target.value)
+                }
+              />
+
+            </div>
+
+            <select
+              value={typeFilter}
+              onChange={(e) =>
+                setTypeFilter(e.target.value)
+              }
+            >
+              <option value="all">
+                All Types
+              </option>
+
+              <option value="Sales Return">
+                Sales Returns
+              </option>
+
+              <option value="Purchase Return">
+                Purchase Returns
+              </option>
+            </select>
+
+          </div>
+
+        </div>
+
+        {filteredReturns.length === 0 ? (
+          <div className="returns-empty">
+
+            <div className="returns-empty-icon">
+              ↩
+            </div>
+
+            <h3>No returns found</h3>
+
+            <p>
+              Try changing your search or return type
+              filter.
+            </p>
+
+          </div>
+        ) : (
+          <div className="returns-table-wrapper">
+
+            <table className="returns-table">
+
+              <thead>
                 <tr>
-                  <td colSpan={9} className="no-products">
-                    No returns found.
-                  </td>
+                  <th>Return</th>
+                  <th>Type</th>
+                  <th>Reference</th>
+                  <th>Party</th>
+                  <th>Date</th>
+                  <th>Items</th>
+                  <th>Amount</th>
+                  <th>Status</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+
+              <tbody>
+
+                {filteredReturns.map((item) => {
+
+                  const typeClass =
+                    getTypeClass(item.type);
+
+                  return (
+                    <tr key={`${item.type}-${item.id}`}>
+
+                      {/* RETURN */}
+
+                      <td>
+                        <div className="return-profile">
+
+                          <div
+                            className={`return-icon ${typeClass}`}
+                          >
+                            ↩
+                          </div>
+
+                          <div>
+                            <strong>
+                              {item.returnNumber}
+                            </strong>
+
+                            <span>
+                              Return #{item.id}
+                            </span>
+                          </div>
+
+                        </div>
+                      </td>
+
+                      {/* TYPE */}
+
+                      <td>
+                        <span
+                          className={`return-type ${typeClass}`}
+                        >
+                          {item.type}
+                        </span>
+                      </td>
+
+                      {/* REFERENCE */}
+
+                      <td>
+                        <span className="return-reference">
+                          {item.referenceNumber}
+                        </span>
+                      </td>
+
+                      {/* PARTY */}
+
+                      <td>
+                        <div className="return-party">
+                          <strong>
+                            {item.party}
+                          </strong>
+                        </div>
+                      </td>
+
+                      {/* DATE */}
+
+                      <td>
+                        <span className="return-date">
+                          {formatDate(
+                            item.returnDate
+                          )}
+                        </span>
+                      </td>
+
+                      {/* ITEMS */}
+
+                      <td>
+                        <span className="return-item-count">
+                          {item.items}
+                        </span>
+                      </td>
+
+                      {/* AMOUNT */}
+
+                      <td>
+                        <strong className="return-amount">
+                          ₹
+                          {Number(
+                            item.amount
+                          ).toLocaleString(
+                            "en-IN"
+                          )}
+                        </strong>
+                      </td>
+
+                      {/* STATUS */}
+
+                      <td>
+                        <span className="return-status">
+                          <span></span>
+                          {item.status}
+                        </span>
+                      </td>
+
+                    </tr>
+                  );
+                })}
+
+              </tbody>
+
+            </table>
+
+          </div>
+        )}
+
       </div>
+
+      {/* INFO STRIP */}
+
+      <div className="returns-info-strip">
+
+        <div className="returns-info-icon">
+          ↩
+        </div>
+
+        <div>
+          <strong>Return Tracking</strong>
+
+          <p>
+            Sales returns are linked to customer
+            invoices, while purchase returns are
+            linked to suppliers.
+          </p>
+        </div>
+
+        <div className="returns-info-summary">
+          <span>Returned Items</span>
+
+          <strong>{totalReturnedItems}</strong>
+        </div>
+
+      </div>
+
     </div>
   );
-}
+};
 
 export default Returns;
+

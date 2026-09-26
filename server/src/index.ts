@@ -5,6 +5,7 @@ import prisma from "../lib/prisma";
 import productRoutes from "./routes/product.routes";
 import categoryRoutes from "./routes/category.routes";
 import customerRoutes from "./routes/customer.routes";
+import employeeRoutes from "./routes/employee.routes";
 import salesRoutes from "./routes/sales.routes";
 import inventoryRoutes from "./routes/inventory.routes";
 import salesDetailRoutes from "./routes/salesDetail.routes";
@@ -13,6 +14,8 @@ import brandRoutes from "./routes/brand.routes";
 import supplierRoutes from "./routes/supplier.routes";
 import warehouseRoutes from "./routes/warehouse.routes";
 import purchaseRoutes from "./routes/purchase.routes";
+import returnRoutes from "./routes/return.routes";
+import roleRoutes from "./routes/role.routes";
 
 dotenv.config();
 console.log("DATABASE_URL loaded:", !!process.env.DATABASE_URL);
@@ -32,8 +35,9 @@ app.use("/api/brands", brandRoutes);
 app.use("/api/suppliers", supplierRoutes);
 app.use("/api/warehouses", warehouseRoutes);
 app.use("/api/purchases", purchaseRoutes);
-
-
+app.use("/api/returns", returnRoutes);
+app.use("/api/employees", employeeRoutes);
+app.use("/api/roles", roleRoutes);
 app.get("/", async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
