@@ -1,0 +1,475 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ======================================================
+// 1. CATEGORY
+// ======================================================
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subCategories SubCategory[]
+  products      Product[]
+}
+
+// ======================================================
+// 2. SUBCATEGORY
+// ======================================================
+
+model SubCategory {
+  id         Int    @id @default(autoincrement())
+  name       String
+  categoryId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  category Category  @relation(fields: [categoryId], references: [id])
+  products Product[]
+
+  @@unique([categoryId, name])
+}
+
+// ======================================================
+// 3. BRAND
+// ======================================================
+
+model Brand {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+}
+
+// ======================================================
+// 4. PRODUCT
+// ======================================================
+
+model Product {
+  id            Int     @id @default(autoincrement())
+  name          String
+  sku           String  @unique
+  description   String?
+  price         Decimal @db.Decimal(10, 2)
+  costPrice     Decimal @db.Decimal(10, 2)
+  unit          String
+  categoryId    Int
+  subCategoryId Int?
+  brandId       Int?
+  isActive      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  category    Category     @relation(fields: [categoryId], references: [id])
+  subCategory SubCategory? @relation(fields: [subCategoryId], references: [id])
+  brand       Brand?       @relation(fields: [brandId], references: [id])
+
+  inventories       Inventory[]
+  purchaseDetails   PurchaseOrderDetail[]
+  purchaseReturns   PurchaseReturn[]
+  salesDetails      SalesBillDetail[]
+  salesReturns      SalesReturn[]
+  stockTransactions StockTransaction[]
+  reorderLevel      ReorderLevel?
+  goodsReceipts     GoodsReceipt[]
+}
+
+// ======================================================
+// 5. SUPPLIER
+// ======================================================
+
+model Supplier {
+  id        Int     @id @default(autoincrement())
+  name      String
+  email     String?
+  phone     String
+  address   String?
+  gstNumber String? @unique
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  purchaseOrders  PurchaseOrder[]
+  purchaseReturns PurchaseReturn[]
+}
+
+// ======================================================
+// 6. WAREHOUSE
+// ======================================================
+
+model Warehouse {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  location    String?
+  managerName String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inventories       Inventory[]
+  stockTransactions StockTransaction[]
+  goodsReceipts     GoodsReceipt[]
+}
+
+// ======================================================
+// 7. INVENTORY
+// ======================================================
+// FEFO is implemented using:
+// batchNumber + expiryDate
+//
+// One row represents one product batch in one warehouse.
+// Earliest expiryDate is selected first during sales.
+//
+// UNIQUE:
+// product + warehouse + batch
+// ======================================================
+
+model Inventory {
+  id                Int       @id @default(autoincrement())
+  productId         Int
+  warehouseId       Int
+  batchNumber       String
+  quantity          Int       @default(0)
+  manufacturingDate DateTime?
+  expiryDate        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product   Product   @relation(fields: [productId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+
+  @@unique([productId, warehouseId, batchNumber])
+  @@index([productId, expiryDate])
+}
+
+// ======================================================
+// 8. REORDER LEVEL
+// ======================================================
+
+model ReorderLevel {
+  id              Int @id @default(autoincrement())
+  productId       Int @unique
+  minimumStock    Int
+  reorderPoint    Int
+  reorderQuantity Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+// ======================================================
+// 9. STOCK TRANSACTION
+// ======================================================
+
+model StockTransaction {
+  id          Int  @id @default(autoincrement())
+  productId   Int
+  warehouseId Int
+  employeeId  Int?
+
+  transactionType String
+  quantity        Int
+  referenceType   String?
+  referenceId     Int?
+  remarks         String?
+
+  transactionDate DateTime @default(now())
+
+  product   Product   @relation(fields: [productId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  employee  Employee? @relation(fields: [employeeId], references: [id])
+
+  @@index([productId])
+  @@index([warehouseId])
+  @@index([transactionDate])
+}
+
+// ======================================================
+// 10. ROLE
+// ======================================================
+
+model Role {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employees Employee[]
+}
+
+// ======================================================
+// 11. EMPLOYEE
+// ======================================================
+
+model Employee {
+  id       Int     @id @default(autoincrement())
+  name     String
+  email    String  @unique
+  phone    String?
+  address  String?
+  roleId   Int
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  role              Role               @relation(fields: [roleId], references: [id])
+  userLogin         UserLogin?
+  stockTransactions StockTransaction[]
+  purchaseOrders    PurchaseOrder[]
+  goodsReceipts     GoodsReceipt[]
+  purchaseReturns   PurchaseReturn[]
+  salesBills        SalesBill[]
+  salesReturns      SalesReturn[]
+}
+
+// ======================================================
+// 12. USER LOGIN
+// ======================================================
+
+model UserLogin {
+  id           Int       @id @default(autoincrement())
+  employeeId   Int       @unique
+  username     String    @unique
+  passwordHash String
+  isActive     Boolean   @default(true)
+  lastLogin    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+}
+
+// ======================================================
+// 13. PURCHASE ORDER
+// ======================================================
+
+model PurchaseOrder {
+  id          Int      @id @default(autoincrement())
+  supplierId  Int
+  employeeId  Int
+  orderDate   DateTime @default(now())
+  status      String   @default("PENDING")
+  totalAmount Decimal  @default(0) @db.Decimal(12, 2)
+  remarks     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  details       PurchaseOrderDetail[]
+  goodsReceipts GoodsReceipt[]
+}
+
+// ======================================================
+// 14. PURCHASE ORDER DETAIL
+// ======================================================
+
+model PurchaseOrderDetail {
+  id              Int     @id @default(autoincrement())
+  purchaseOrderId Int
+  productId       Int
+  quantity        Int
+  unitCost        Decimal @db.Decimal(10, 2)
+  totalCost       Decimal @db.Decimal(12, 2)
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+}
+
+// ======================================================
+// 15. GOODS RECEIPT
+// ======================================================
+// Records actual stock received against a purchase order.
+//
+// batchNumber + expiryDate are stored here because received
+// stock will eventually become an Inventory batch.
+// ======================================================
+
+model GoodsReceipt {
+  id              Int @id @default(autoincrement())
+  purchaseOrderId Int
+  productId       Int
+  warehouseId     Int
+  employeeId      Int
+
+  batchNumber       String
+  quantityReceived  Int
+  manufacturingDate DateTime?
+  expiryDate        DateTime?
+
+  receivedDate DateTime @default(now())
+  remarks      String?
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  product       Product       @relation(fields: [productId], references: [id])
+  warehouse     Warehouse     @relation(fields: [warehouseId], references: [id])
+  employee      Employee      @relation(fields: [employeeId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+  @@index([warehouseId])
+}
+
+// ======================================================
+// 16. PURCHASE RETURN
+// ======================================================
+
+model PurchaseReturn {
+  id         Int  @id @default(autoincrement())
+  supplierId Int
+  productId  Int
+  employeeId Int?
+
+  batchNumber String?
+  quantity    Int
+  reason      String?
+  returnDate  DateTime @default(now())
+
+  unitCost    Decimal? @db.Decimal(10, 2)
+  totalAmount Decimal? @db.Decimal(12, 2)
+
+  supplier Supplier  @relation(fields: [supplierId], references: [id])
+  product  Product   @relation(fields: [productId], references: [id])
+  employee Employee? @relation(fields: [employeeId], references: [id])
+}
+
+// ======================================================
+// 17. CUSTOMER
+// ======================================================
+
+model Customer {
+  id       Int     @id @default(autoincrement())
+  name     String
+  email    String? @unique
+  phone    String?
+  address  String?
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  salesBills SalesBill[]
+}
+
+// ======================================================
+// 18. SALES BILL
+// ======================================================
+
+model SalesBill {
+  id         Int      @id @default(autoincrement())
+  customerId Int?
+  employeeId Int?
+  billDate   DateTime @default(now())
+
+  subtotal   Decimal @default(0) @db.Decimal(12, 2)
+  taxAmount  Decimal @default(0) @db.Decimal(12, 2)
+  discount   Decimal @default(0) @db.Decimal(12, 2)
+  grandTotal Decimal @default(0) @db.Decimal(12, 2)
+
+  status String @default("COMPLETED")
+
+  customer Customer? @relation(fields: [customerId], references: [id])
+  employee Employee? @relation(fields: [employeeId], references: [id])
+
+  details  SalesBillDetail[]
+  payments Payment[]
+  returns  SalesReturn[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([billDate])
+}
+
+// ======================================================
+// 19. SALES BILL DETAIL
+// ======================================================
+
+model SalesBillDetail {
+  id          Int @id @default(autoincrement())
+  salesBillId Int
+  productId   Int
+
+  quantity   Int
+  unitPrice  Decimal @db.Decimal(10, 2)
+  discount   Decimal @default(0) @db.Decimal(10, 2)
+  totalPrice Decimal @db.Decimal(12, 2)
+
+  salesBill SalesBill @relation(fields: [salesBillId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id])
+
+  @@index([salesBillId])
+  @@index([productId])
+}
+
+// ======================================================
+// 20. SALES RETURN
+// ======================================================
+
+model SalesReturn {
+  id          Int  @id @default(autoincrement())
+  salesBillId Int
+  productId   Int
+  employeeId  Int?
+
+  batchNumber String?
+  quantity    Int
+  reason      String?
+
+  returnDate   DateTime @default(now())
+  refundAmount Decimal? @db.Decimal(12, 2)
+
+  salesBill SalesBill @relation(fields: [salesBillId], references: [id])
+  product   Product   @relation(fields: [productId], references: [id])
+  employee  Employee? @relation(fields: [employeeId], references: [id])
+
+  @@index([salesBillId])
+  @@index([productId])
+}
+
+// ======================================================
+// 21. PAYMENT
+// ======================================================
+
+model Payment {
+  id          Int @id @default(autoincrement())
+  salesBillId Int
+
+  amount               Decimal  @db.Decimal(12, 2)
+  paymentMethod        String
+  paymentDate          DateTime @default(now())
+  transactionReference String?
+  status               String   @default("COMPLETED")
+
+  salesBill SalesBill @relation(fields: [salesBillId], references: [id])
+
+  @@index([salesBillId])
+}
