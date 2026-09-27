@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./Suppliers.css";
-
+import api from "../services/axios";
 interface PurchaseOrder {
   id: number;
 }
@@ -57,9 +57,7 @@ const Suppliers = () => {
     try {
       setLoading(true);
 
-      const response = await axios.get(
-        "http://localhost:5000/api/suppliers"
-      );
+      const response = await api.get("/suppliers");
 
       setSuppliers(response.data);
       setError("");
@@ -67,7 +65,7 @@ const Suppliers = () => {
       console.error("Error fetching suppliers:", error);
 
       setError(
-        "Failed to load suppliers. Please make sure the server is running."
+        "Failed to load suppliers. Please make sure the server is running.",
       );
     } finally {
       setLoading(false);
@@ -91,9 +89,7 @@ const Suppliers = () => {
         supplier.name.toLowerCase().includes(search) ||
         (supplier.email || "").toLowerCase().includes(search) ||
         supplier.phone.toLowerCase().includes(search) ||
-        (supplier.gstNumber || "")
-          .toLowerCase()
-          .includes(search);
+        (supplier.gstNumber || "").toLowerCase().includes(search);
 
       const matchesStatus =
         statusFilter === "all" ||
@@ -109,33 +105,28 @@ const Suppliers = () => {
   // =========================
 
   const activeSuppliers = suppliers.filter(
-    (supplier) => supplier.isActive
+    (supplier) => supplier.isActive,
   ).length;
 
   const inactiveSuppliers = suppliers.filter(
-    (supplier) => !supplier.isActive
+    (supplier) => !supplier.isActive,
   ).length;
 
   const totalOrders = suppliers.reduce(
-    (total, supplier) =>
-      total + (supplier.purchaseOrders?.length || 0),
-    0
+    (total, supplier) => total + (supplier.purchaseOrders?.length || 0),
+    0,
   );
 
   const totalReturns = suppliers.reduce(
-    (total, supplier) =>
-      total + (supplier.purchaseReturns?.length || 0),
-    0
+    (total, supplier) => total + (supplier.purchaseReturns?.length || 0),
+    0,
   );
 
   // =========================
   // FORM
   // =========================
 
-  const handleInputChange = (
-    field: keyof SupplierForm,
-    value: string
-  ) => {
+  const handleInputChange = (field: keyof SupplierForm, value: string) => {
     setForm((previous) => ({
       ...previous,
       [field]: value,
@@ -151,9 +142,7 @@ const Suppliers = () => {
   // CREATE SUPPLIER
   // =========================
 
-  const handleCreateSupplier = async (
-    e: React.FormEvent
-  ) => {
+  const handleCreateSupplier = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!form.name.trim()) {
@@ -167,16 +156,13 @@ const Suppliers = () => {
     }
 
     try {
-      await axios.post(
-        "http://localhost:5000/api/suppliers",
-        {
-          name: form.name.trim(),
-          email: form.email.trim() || null,
-          phone: form.phone.trim(),
-          address: form.address.trim() || null,
-          gstNumber: form.gstNumber.trim() || null,
-        }
-      );
+      await api.post("/suppliers", {
+        name: form.name.trim(),
+        email: form.email.trim() || null,
+        phone: form.phone.trim(),
+        address: form.address.trim() || null,
+        gstNumber: form.gstNumber.trim() || null,
+      });
 
       alert("Supplier added successfully!");
 
@@ -185,9 +171,7 @@ const Suppliers = () => {
     } catch (error) {
       console.error("Error creating supplier:", error);
 
-      alert(
-        "Failed to add supplier. Please check the details and try again."
-      );
+      alert("Failed to add supplier. Please check the details and try again.");
     }
   };
 
@@ -220,9 +204,7 @@ const Suppliers = () => {
 
           <p>{error}</p>
 
-          <button onClick={() => window.location.reload()}>
-            Try Again
-          </button>
+          <button onClick={() => window.location.reload()}>Try Again</button>
         </div>
       </div>
     );
@@ -230,20 +212,16 @@ const Suppliers = () => {
 
   return (
     <div className="suppliers-page">
-
       {/* HEADER */}
 
       <div className="suppliers-header">
         <div>
-          <div className="suppliers-breadcrumb">
-            Dashboard / Suppliers
-          </div>
+          <div className="suppliers-breadcrumb">Dashboard / Suppliers</div>
 
           <h1>Suppliers</h1>
 
           <p>
-            Manage supplier information, contacts and
-            purchasing relationships.
+            Manage supplier information, contacts and purchasing relationships.
           </p>
         </div>
 
@@ -262,11 +240,8 @@ const Suppliers = () => {
       {/* STATS */}
 
       <div className="suppliers-stats">
-
         <div className="supplier-stat-card">
-          <div className="supplier-stat-icon purple">
-            ◈
-          </div>
+          <div className="supplier-stat-icon purple">◈</div>
 
           <div>
             <span>Total Suppliers</span>
@@ -275,9 +250,7 @@ const Suppliers = () => {
         </div>
 
         <div className="supplier-stat-card">
-          <div className="supplier-stat-icon green">
-            ✓
-          </div>
+          <div className="supplier-stat-icon green">✓</div>
 
           <div>
             <span>Active Suppliers</span>
@@ -286,9 +259,7 @@ const Suppliers = () => {
         </div>
 
         <div className="supplier-stat-card">
-          <div className="supplier-stat-icon blue">
-            📋
-          </div>
+          <div className="supplier-stat-icon blue">📋</div>
 
           <div>
             <span>Purchase Orders</span>
@@ -297,58 +268,40 @@ const Suppliers = () => {
         </div>
 
         <div className="supplier-stat-card">
-          <div className="supplier-stat-icon orange">
-            ↩
-          </div>
+          <div className="supplier-stat-icon orange">↩</div>
 
           <div>
             <span>Purchase Returns</span>
             <strong>{totalReturns}</strong>
           </div>
         </div>
-
       </div>
 
       {/* ADD SUPPLIER FORM */}
 
       {showForm && (
         <div className="supplier-form-card">
-
           <div className="supplier-form-header">
             <div>
               <h2>Add New Supplier</h2>
 
-              <p>
-                Enter the supplier information below.
-              </p>
+              <p>Enter the supplier information below.</p>
             </div>
 
-            <button
-              className="supplier-close-button"
-              onClick={resetForm}
-            >
+            <button className="supplier-close-button" onClick={resetForm}>
               ×
             </button>
           </div>
 
-          <form
-            className="supplier-form"
-            onSubmit={handleCreateSupplier}
-          >
+          <form className="supplier-form" onSubmit={handleCreateSupplier}>
             <div className="supplier-form-grid">
-
               <div className="supplier-form-group">
                 <label>Supplier Name *</label>
 
                 <input
                   type="text"
                   value={form.name}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "name",
-                      e.target.value
-                    )
-                  }
+                  onChange={(e) => handleInputChange("name", e.target.value)}
                   placeholder="Enter supplier name"
                 />
               </div>
@@ -359,12 +312,7 @@ const Suppliers = () => {
                 <input
                   type="text"
                   value={form.phone}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "phone",
-                      e.target.value
-                    )
-                  }
+                  onChange={(e) => handleInputChange("phone", e.target.value)}
                   placeholder="Enter phone number"
                 />
               </div>
@@ -375,12 +323,7 @@ const Suppliers = () => {
                 <input
                   type="email"
                   value={form.email}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "email",
-                      e.target.value
-                    )
-                  }
+                  onChange={(e) => handleInputChange("email", e.target.value)}
                   placeholder="supplier@example.com"
                 />
               </div>
@@ -392,10 +335,7 @@ const Suppliers = () => {
                   type="text"
                   value={form.gstNumber}
                   onChange={(e) =>
-                    handleInputChange(
-                      "gstNumber",
-                      e.target.value
-                    )
+                    handleInputChange("gstNumber", e.target.value)
                   }
                   placeholder="Enter GST number"
                 />
@@ -406,21 +346,14 @@ const Suppliers = () => {
 
                 <textarea
                   value={form.address}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "address",
-                      e.target.value
-                    )
-                  }
+                  onChange={(e) => handleInputChange("address", e.target.value)}
                   placeholder="Enter supplier address"
                   rows={3}
                 />
               </div>
-
             </div>
 
             <div className="supplier-form-actions">
-
               <button
                 type="button"
                 className="supplier-cancel-button"
@@ -429,13 +362,9 @@ const Suppliers = () => {
                 Cancel
               </button>
 
-              <button
-                type="submit"
-                className="supplier-save-button"
-              >
+              <button type="submit" className="supplier-save-button">
                 Add Supplier
               </button>
-
             </div>
           </form>
         </div>
@@ -444,20 +373,16 @@ const Suppliers = () => {
       {/* SUPPLIER LIST */}
 
       <div className="suppliers-list-card">
-
         <div className="suppliers-list-header">
-
           <div>
             <h2>Supplier List</h2>
 
             <p>
-              {filteredSuppliers.length} of{" "}
-              {suppliers.length} suppliers
+              {filteredSuppliers.length} of {suppliers.length} suppliers
             </p>
           </div>
 
           <div className="suppliers-filters">
-
             <div className="suppliers-search">
               <span>⌕</span>
 
@@ -465,45 +390,32 @@ const Suppliers = () => {
                 type="text"
                 placeholder="Search suppliers..."
                 value={searchTerm}
-                onChange={(e) =>
-                  setSearchTerm(e.target.value)
-                }
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
 
             <select
               value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(e.target.value)
-              }
+              onChange={(e) => setStatusFilter(e.target.value)}
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
-
           </div>
         </div>
 
         {filteredSuppliers.length === 0 ? (
           <div className="suppliers-empty">
-
-            <div className="suppliers-empty-icon">
-              ◈
-            </div>
+            <div className="suppliers-empty-icon">◈</div>
 
             <h3>No suppliers found</h3>
 
-            <p>
-              Try changing your search or status filter.
-            </p>
-
+            <p>Try changing your search or status filter.</p>
           </div>
         ) : (
           <div className="suppliers-table-wrapper">
-
             <table className="suppliers-table">
-
               <thead>
                 <tr>
                   <th>Supplier</th>
@@ -516,117 +428,80 @@ const Suppliers = () => {
               </thead>
 
               <tbody>
-
                 {filteredSuppliers.map((supplier) => {
+                  const orders = supplier.purchaseOrders?.length || 0;
 
-                  const orders =
-                    supplier.purchaseOrders?.length || 0;
-
-                  const returns =
-                    supplier.purchaseReturns?.length || 0;
+                  const returns = supplier.purchaseReturns?.length || 0;
 
                   return (
                     <tr key={supplier.id}>
-
                       <td>
                         <div className="supplier-profile">
-
                           <div className="supplier-avatar">
-                            {supplier.name
-                              .charAt(0)
-                              .toUpperCase()}
+                            {supplier.name.charAt(0).toUpperCase()}
                           </div>
 
                           <div>
-                            <strong>
-                              {supplier.name}
-                            </strong>
+                            <strong>{supplier.name}</strong>
 
-                            <span>
-                              ID: {supplier.id}
-                            </span>
+                            <span>ID: {supplier.id}</span>
                           </div>
-
                         </div>
                       </td>
 
                       <td>
                         <div className="supplier-contact">
+                          <strong>{supplier.phone}</strong>
 
-                          <strong>
-                            {supplier.phone}
-                          </strong>
-
-                          <span>
-                            {supplier.email ||
-                              "No email"}
-                          </span>
-
+                          <span>{supplier.email || "No email"}</span>
                         </div>
                       </td>
 
                       <td>
                         <span className="supplier-gst">
-                          {supplier.gstNumber ||
-                            "Not provided"}
+                          {supplier.gstNumber || "Not provided"}
                         </span>
                       </td>
 
                       <td>
-                        <span className="supplier-count order">
-                          {orders}
-                        </span>
+                        <span className="supplier-count order">{orders}</span>
                       </td>
 
                       <td>
-                        <span className="supplier-count return">
-                          {returns}
-                        </span>
+                        <span className="supplier-count return">{returns}</span>
                       </td>
 
                       <td>
                         <span
                           className={`supplier-status ${
-                            supplier.isActive
-                              ? "active"
-                              : "inactive"
+                            supplier.isActive ? "active" : "inactive"
                           }`}
                         >
                           <span></span>
 
-                          {supplier.isActive
-                            ? "Active"
-                            : "Inactive"}
+                          {supplier.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
-
                     </tr>
                   );
                 })}
-
               </tbody>
-
             </table>
-
           </div>
         )}
-
       </div>
 
       {/* INFO STRIP */}
 
       <div className="supplier-info-strip">
-
-        <div className="supplier-info-icon">
-          ✓
-        </div>
+        <div className="supplier-info-icon">✓</div>
 
         <div>
           <strong>Supplier Management</strong>
 
           <p>
-            Keep supplier contact and GST information
-            updated for smooth purchase operations.
+            Keep supplier contact and GST information updated for smooth
+            purchase operations.
           </p>
         </div>
 
@@ -634,9 +509,7 @@ const Suppliers = () => {
           <span>Inactive Suppliers</span>
           <strong>{inactiveSuppliers}</strong>
         </div>
-
       </div>
-
     </div>
   );
 };

@@ -1,5 +1,6 @@
+
 import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import api from "../services/axios";
 import "./Reports.css";
 
 interface ProductPerformance {
@@ -45,33 +46,53 @@ const Reports = () => {
   const fetchReports = async () => {
     try {
       setLoading(true);
-
-      const [
-        productResponse,
-        customerResponse,
-        salesResponse,
-      ] = await Promise.all([
-        axios.get(
-          "http://localhost:5000/api/sales-details/performance"
-        ),
-        axios.get(
-          "http://localhost:5000/api/sales/performance/customers"
-        ),
-        axios.get(
-          "http://localhost:5000/api/sales"
-        ),
-      ]);
-
-      setProductPerformance(productResponse.data);
-      setCustomerPerformance(customerResponse.data);
-      setSales(salesResponse.data);
-
       setError("");
+
+      const [productResponse, customerResponse, salesResponse] =
+        await Promise.all([
+          api.get("/sales-details/performance"),
+          api.get("/sales/performance/customers"),
+          api.get("/sales"),
+        ]);
+
+      const products: ProductPerformance[] = (
+        productResponse.data || []
+      ).map((product: any) => ({
+        productId: Number(product.productId || 0),
+        productName: String(product.productName || "Unknown Product"),
+        sku: String(product.sku || "N/A"),
+        quantitySold: Number(product.quantitySold || 0),
+        revenue: Number(product.revenue || 0),
+      }));
+
+      const customers: CustomerPerformance[] = (
+        customerResponse.data || []
+      ).map((customer: any) => ({
+        customerId: Number(customer.customerId || 0),
+        customerName: String(
+          customer.customerName || "Unknown Customer",
+        ),
+        totalBills: Number(customer.totalBills || 0),
+        totalPurchases: Number(customer.totalPurchases || 0),
+      }));
+
+      const salesData: SalesBill[] = (salesResponse.data || []).map(
+        (sale: any) => ({
+          id: Number(sale.id || 0),
+          billDate: sale.billDate,
+          grandTotal: sale.grandTotal || 0,
+          status: String(sale.status || ""),
+        }),
+      );
+
+      setProductPerformance(products);
+      setCustomerPerformance(customers);
+      setSales(salesData);
     } catch (error) {
       console.error("Error fetching reports:", error);
 
       setError(
-        "Failed to load reports. Please make sure the server is running."
+        "Failed to load reports. Please make sure the server is running.",
       );
     } finally {
       setLoading(false);
@@ -87,23 +108,19 @@ const Reports = () => {
   // =========================
 
   const totalRevenue = sales.reduce(
-    (total, sale) =>
-      total + Number(sale.grandTotal || 0),
-    0
+    (total, sale) => total + Number(sale.grandTotal || 0),
+    0,
   );
 
   const totalBills = sales.length;
 
   const totalItemsSold = productPerformance.reduce(
-    (total, product) =>
-      total + Number(product.quantitySold || 0),
-    0
+    (total, product) => total + Number(product.quantitySold || 0),
+    0,
   );
 
   const averageBill =
-    totalBills > 0
-      ? totalRevenue / totalBills
-      : 0;
+    totalBills > 0 ? totalRevenue / totalBills : 0;
 
   const topProduct = productPerformance[0];
 
@@ -117,35 +134,34 @@ const Reports = () => {
     const monthMap: Record<string, number> = {};
 
     sales.forEach((sale) => {
+      if (!sale.billDate) {
+        return;
+      }
+
       const date = new Date(sale.billDate);
 
-      const month = date.toLocaleDateString(
-        "en-IN",
-        {
-          month: "short",
-        }
-      );
+      if (isNaN(date.getTime())) {
+        return;
+      }
+
+      const month = date.toLocaleDateString("en-IN", {
+        month: "short",
+      });
 
       monthMap[month] =
         (monthMap[month] || 0) +
         Number(sale.grandTotal || 0);
     });
 
-    return Object.entries(monthMap).map(
-      ([month, amount]) => ({
-        month,
-        amount,
-      })
-    );
+    return Object.entries(monthMap).map(([month, amount]) => ({
+      month,
+      amount,
+    }));
   }, [sales]);
 
   const maxMonthlySales =
     monthlySales.length > 0
-      ? Math.max(
-          ...monthlySales.map(
-            (item) => item.amount
-          )
-        )
+      ? Math.max(...monthlySales.map((item) => item.amount))
       : 0;
 
   // =========================
@@ -157,6 +173,7 @@ const Reports = () => {
       <div className="reports-page">
         <div className="reports-loading">
           <div className="reports-spinner"></div>
+
           <p>Loading reports...</p>
         </div>
       </div>
@@ -171,17 +188,13 @@ const Reports = () => {
     return (
       <div className="reports-page">
         <div className="reports-error">
-          <div className="reports-error-icon">
-            !
-          </div>
+          <div className="reports-error-icon">!</div>
 
           <h2>Reports unavailable</h2>
 
           <p>{error}</p>
 
-          <button
-            onClick={fetchReports}
-          >
+          <button onClick={fetchReports}>
             Try Again
           </button>
         </div>
@@ -195,7 +208,6 @@ const Reports = () => {
       {/* HEADER */}
 
       <div className="reports-header">
-
         <div>
           <div className="reports-breadcrumb">
             Dashboard / Reports
@@ -208,7 +220,6 @@ const Reports = () => {
             purchasing performance.
           </p>
         </div>
-
       </div>
 
       {/* KPI CARDS */}
@@ -262,9 +273,7 @@ const Reports = () => {
             <span>Average Bill</span>
 
             <strong>
-              ₹{Math.round(
-                averageBill
-              ).toLocaleString("en-IN")}
+              ₹{Math.round(averageBill).toLocaleString("en-IN")}
             </strong>
           </div>
         </div>
@@ -297,7 +306,7 @@ const Reports = () => {
             <div className="highlight-content">
 
               <div className="highlight-avatar">
-                {topProduct.productName
+                {String(topProduct.productName || "P")
                   .charAt(0)
                   .toUpperCase()}
               </div>
@@ -305,11 +314,14 @@ const Reports = () => {
               <div className="highlight-details">
 
                 <strong>
-                  {topProduct.productName}
+                  {String(
+                    topProduct.productName ||
+                      "Unknown Product",
+                  )}
                 </strong>
 
                 <span>
-                  SKU: {topProduct.sku}
+                  SKU: {String(topProduct.sku || "N/A")}
                 </span>
 
               </div>
@@ -317,7 +329,9 @@ const Reports = () => {
               <div className="highlight-value">
 
                 <strong>
-                  {topProduct.quantitySold}
+                  {Number(
+                    topProduct.quantitySold || 0,
+                  )}
                 </strong>
 
                 <span>
@@ -359,7 +373,7 @@ const Reports = () => {
             <div className="highlight-content">
 
               <div className="highlight-avatar customer">
-                {topCustomer.customerName
+                {String(topCustomer.customerName || "C")
                   .charAt(0)
                   .toUpperCase()}
               </div>
@@ -367,11 +381,17 @@ const Reports = () => {
               <div className="highlight-details">
 
                 <strong>
-                  {topCustomer.customerName}
+                  {String(
+                    topCustomer.customerName ||
+                      "Unknown Customer",
+                  )}
                 </strong>
 
                 <span>
-                  {topCustomer.totalBills} bills
+                  {Number(
+                    topCustomer.totalBills || 0,
+                  )}{" "}
+                  bills
                 </span>
 
               </div>
@@ -380,9 +400,9 @@ const Reports = () => {
 
                 <strong>
                   ₹
-                  {topCustomer.totalPurchases.toLocaleString(
-                    "en-IN"
-                  )}
+                  {Number(
+                    topCustomer.totalPurchases || 0,
+                  ).toLocaleString("en-IN")}
                 </strong>
 
                 <span>
@@ -430,72 +450,90 @@ const Reports = () => {
             <div className="performance-list">
 
               {productPerformance.map(
-                (product, index) => (
+                (product, index) => {
 
-                  <div
-                    className="performance-row"
-                    key={product.productId}
-                  >
+                  const quantitySold = Number(
+                    product.quantitySold || 0,
+                  );
 
-                    <div className="performance-rank">
-                      {index + 1}
-                    </div>
+                  const topQuantity = Number(
+                    topProduct?.quantitySold || 0,
+                  );
 
-                    <div className="performance-product">
+                  const performanceWidth =
+                    topQuantity > 0
+                      ? Math.min(
+                          (quantitySold /
+                            topQuantity) *
+                            100,
+                          100,
+                        )
+                      : 0;
 
-                      <strong>
-                        {product.productName}
-                      </strong>
+                  return (
+                    <div
+                      className="performance-row"
+                      key={product.productId}
+                    >
 
-                      <span>
-                        {product.sku}
-                      </span>
+                      <div className="performance-rank">
+                        {index + 1}
+                      </div>
 
-                    </div>
+                      <div className="performance-product">
 
-                    <div className="performance-bar-area">
+                        <strong>
+                          {String(
+                            product.productName ||
+                              "Unknown Product",
+                          )}
+                        </strong>
 
-                      <div className="performance-bar-track">
+                        <span>
+                          {String(product.sku || "N/A")}
+                        </span>
 
-                        <div
-                          className="performance-bar"
-                          style={{
-                            width: `${
-                              topProduct
-                                ? (product.quantitySold /
-                                    topProduct.quantitySold) *
-                                  100
-                                : 0
-                            }%`,
-                          }}
-                        ></div>
+                      </div>
+
+                      <div className="performance-bar-area">
+
+                        <div className="performance-bar-track">
+
+                          <div
+                            className="performance-bar"
+                            style={{
+                              width: `${performanceWidth}%`,
+                            }}
+                          ></div>
+
+                        </div>
+
+                      </div>
+
+                      <div className="performance-number">
+
+                        <strong>
+                          {quantitySold}
+                        </strong>
+
+                        <span>
+                          units
+                        </span>
+
+                      </div>
+
+                      <div className="performance-revenue">
+
+                        ₹{" "}
+                        {Number(
+                          product.revenue || 0,
+                        ).toLocaleString("en-IN")}
 
                       </div>
 
                     </div>
-
-                    <div className="performance-number">
-
-                      <strong>
-                        {product.quantitySold}
-                      </strong>
-
-                      <span>units</span>
-
-                    </div>
-
-                    <div className="performance-revenue">
-
-                      ₹
-                      {product.revenue.toLocaleString(
-                        "en-IN"
-                      )}
-
-                    </div>
-
-                  </div>
-
-                )
+                  );
+                },
               )}
 
             </div>
@@ -539,19 +577,30 @@ const Reports = () => {
                     </div>
 
                     <div className="customer-report-avatar">
-                      {customer.customerName
+
+                      {String(
+                        customer.customerName ||
+                          "C",
+                      )
                         .charAt(0)
                         .toUpperCase()}
+
                     </div>
 
                     <div className="customer-report-details">
 
                       <strong>
-                        {customer.customerName}
+                        {String(
+                          customer.customerName ||
+                            "Unknown Customer",
+                        )}
                       </strong>
 
                       <span>
-                        {customer.totalBills} bills
+                        {Number(
+                          customer.totalBills || 0,
+                        )}{" "}
+                        bills
                       </span>
 
                     </div>
@@ -560,9 +609,9 @@ const Reports = () => {
 
                       <strong>
                         ₹
-                        {customer.totalPurchases.toLocaleString(
-                          "en-IN"
-                        )}
+                        {Number(
+                          customer.totalPurchases || 0,
+                        ).toLocaleString("en-IN")}
                       </strong>
 
                       <span>
@@ -573,7 +622,7 @@ const Reports = () => {
 
                   </div>
 
-                )
+                ),
               )}
 
             </div>
@@ -598,11 +647,13 @@ const Reports = () => {
           </div>
 
           <div className="monthly-total">
+
             <span>Total</span>
 
             <strong>
               ₹{totalRevenue.toLocaleString("en-IN")}
             </strong>
+
           </div>
 
         </div>
@@ -614,51 +665,49 @@ const Reports = () => {
         ) : (
           <div className="monthly-chart">
 
-            {monthlySales.map(
-              (item) => {
+            {monthlySales.map((item) => {
 
-                const height =
-                  maxMonthlySales > 0
-                    ? Math.max(
-                        (item.amount /
-                          maxMonthlySales) *
-                          100,
-                        8
-                      )
-                    : 8;
+              const height =
+                maxMonthlySales > 0
+                  ? Math.max(
+                      (item.amount /
+                        maxMonthlySales) *
+                        100,
+                      8,
+                    )
+                  : 8;
 
-                return (
-                  <div
-                    className="monthly-column"
-                    key={item.month}
-                  >
+              return (
+                <div
+                  className="monthly-column"
+                  key={item.month}
+                >
 
-                    <div className="monthly-value">
-                      ₹
-                      {item.amount.toLocaleString(
-                        "en-IN"
-                      )}
-                    </div>
+                  <div className="monthly-value">
+                    ₹
+                    {Number(
+                      item.amount || 0,
+                    ).toLocaleString("en-IN")}
+                  </div>
 
-                    <div className="monthly-bar-wrapper">
+                  <div className="monthly-bar-wrapper">
 
-                      <div
-                        className="monthly-bar"
-                        style={{
-                          height: `${height}%`,
-                        }}
-                      ></div>
-
-                    </div>
-
-                    <span>
-                      {item.month}
-                    </span>
+                    <div
+                      className="monthly-bar"
+                      style={{
+                        height: `${height}%`,
+                      }}
+                    ></div>
 
                   </div>
-                );
-              }
-            )}
+
+                  <span>
+                    {item.month}
+                  </span>
+
+                </div>
+              );
+            })}
 
           </div>
         )}
@@ -706,4 +755,3 @@ const Reports = () => {
 };
 
 export default Reports;
-

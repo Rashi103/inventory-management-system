@@ -1,8 +1,7 @@
-
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import api from "../services/axios";
 import "./Brands.css";
-
 interface Product {
   id: number;
 }
@@ -33,9 +32,7 @@ const Brands = () => {
     try {
       setLoading(true);
 
-      const response = await axios.get(
-        "http://localhost:5000/api/brands"
-      );
+      const response = await api.get("/brands");
 
       setBrands(response.data);
       setError("");
@@ -43,7 +40,7 @@ const Brands = () => {
       console.error("Error fetching brands:", error);
 
       setError(
-        "Failed to load brands. Please make sure the server is running."
+        "Failed to load brands. Please make sure the server is running.",
       );
     } finally {
       setLoading(false);
@@ -68,9 +65,7 @@ const Brands = () => {
     return brands.filter(
       (brand) =>
         brand.name.toLowerCase().includes(search) ||
-        (brand.description || "")
-          .toLowerCase()
-          .includes(search)
+        (brand.description || "").toLowerCase().includes(search),
     );
   }, [brands, searchTerm]);
 
@@ -79,26 +74,23 @@ const Brands = () => {
   // =========================
 
   const totalProducts = brands.reduce(
-    (total, brand) =>
-      total + (brand.products?.length || 0),
-    0
+    (total, brand) => total + (brand.products?.length || 0),
+    0,
   );
 
   const usedBrands = brands.filter(
-    (brand) => (brand.products?.length || 0) > 0
+    (brand) => (brand.products?.length || 0) > 0,
   ).length;
 
   const unusedBrands = brands.filter(
-    (brand) => (brand.products?.length || 0) === 0
+    (brand) => (brand.products?.length || 0) === 0,
   ).length;
 
   // =========================
   // CREATE BRAND
   // =========================
 
-  const handleCreateBrand = async (
-    e: React.FormEvent
-  ) => {
+  const handleCreateBrand = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!brandName.trim()) {
@@ -107,13 +99,10 @@ const Brands = () => {
     }
 
     try {
-      await axios.post(
-        "http://localhost:5000/api/brands",
-        {
-          name: brandName.trim(),
-          description: description.trim() || null,
-        }
-      );
+      await api.post("/brands", {
+        name: brandName.trim(),
+        description: description.trim() || null,
+      });
 
       alert("Brand created successfully!");
 
@@ -125,9 +114,7 @@ const Brands = () => {
     } catch (error) {
       console.error("Error creating brand:", error);
 
-      alert(
-        "Failed to create brand. The brand name may already exist."
-      );
+      alert("Failed to create brand. The brand name may already exist.");
     }
   };
 
@@ -160,11 +147,7 @@ const Brands = () => {
 
           <p>{error}</p>
 
-          <button
-            onClick={() => window.location.reload()}
-          >
-            Try Again
-          </button>
+          <button onClick={() => window.location.reload()}>Try Again</button>
         </div>
       </div>
     );
@@ -172,22 +155,15 @@ const Brands = () => {
 
   return (
     <div className="brands-page">
-
       {/* HEADER */}
 
       <div className="brands-header">
-
         <div>
-          <div className="brands-breadcrumb">
-            Dashboard / Brands
-          </div>
+          <div className="brands-breadcrumb">Dashboard / Brands</div>
 
           <h1>Brands</h1>
 
-          <p>
-            Manage the brands associated with
-            your product catalog.
-          </p>
+          <p>Manage the brands associated with your product catalog.</p>
         </div>
 
         <button
@@ -197,17 +173,13 @@ const Brands = () => {
           <span>+</span>
           Add Brand
         </button>
-
       </div>
 
       {/* STATS */}
 
       <div className="brands-stats">
-
         <div className="brand-stat-card">
-          <div className="brand-stat-icon purple">
-            ◈
-          </div>
+          <div className="brand-stat-icon purple">◈</div>
 
           <div>
             <span>Total Brands</span>
@@ -216,9 +188,7 @@ const Brands = () => {
         </div>
 
         <div className="brand-stat-card">
-          <div className="brand-stat-icon green">
-            ✓
-          </div>
+          <div className="brand-stat-icon green">✓</div>
 
           <div>
             <span>Brands In Use</span>
@@ -227,9 +197,7 @@ const Brands = () => {
         </div>
 
         <div className="brand-stat-card">
-          <div className="brand-stat-icon blue">
-            📦
-          </div>
+          <div className="brand-stat-icon blue">📦</div>
 
           <div>
             <span>Products Assigned</span>
@@ -238,31 +206,24 @@ const Brands = () => {
         </div>
 
         <div className="brand-stat-card">
-          <div className="brand-stat-icon orange">
-            ○
-          </div>
+          <div className="brand-stat-icon orange">○</div>
 
           <div>
             <span>Unused Brands</span>
             <strong>{unusedBrands}</strong>
           </div>
         </div>
-
       </div>
 
       {/* ADD BRAND FORM */}
 
       {showForm && (
         <div className="brand-form-card">
-
           <div className="brand-form-header">
-
             <div>
               <h2>Add New Brand</h2>
 
-              <p>
-                Enter the brand information below.
-              </p>
+              <p>Enter the brand information below.</p>
             </div>
 
             <button
@@ -271,25 +232,17 @@ const Brands = () => {
             >
               ×
             </button>
-
           </div>
 
-          <form
-            className="brand-form"
-            onSubmit={handleCreateBrand}
-          >
-
+          <form className="brand-form" onSubmit={handleCreateBrand}>
             <div className="brand-form-grid">
-
               <div className="brand-form-group">
                 <label>Brand Name *</label>
 
                 <input
                   type="text"
                   value={brandName}
-                  onChange={(e) =>
-                    setBrandName(e.target.value)
-                  }
+                  onChange={(e) => setBrandName(e.target.value)}
                   placeholder="e.g. Britannia"
                 />
               </div>
@@ -300,17 +253,13 @@ const Brands = () => {
                 <input
                   type="text"
                   value={description}
-                  onChange={(e) =>
-                    setDescription(e.target.value)
-                  }
+                  onChange={(e) => setDescription(e.target.value)}
                   placeholder="Short brand description"
                 />
               </div>
-
             </div>
 
             <div className="brand-form-actions">
-
               <button
                 type="button"
                 className="brand-cancel-button"
@@ -319,72 +268,49 @@ const Brands = () => {
                 Cancel
               </button>
 
-              <button
-                type="submit"
-                className="brand-save-button"
-              >
+              <button type="submit" className="brand-save-button">
                 Create Brand
               </button>
-
             </div>
-
           </form>
-
         </div>
       )}
 
       {/* BRAND LIST */}
 
       <div className="brands-list-card">
-
         <div className="brands-list-header">
-
           <div>
             <h2>Brand List</h2>
 
             <p>
-              {filteredBrands.length} of{" "}
-              {brands.length} brands
+              {filteredBrands.length} of {brands.length} brands
             </p>
           </div>
 
           <div className="brands-search">
-
             <span>⌕</span>
 
             <input
               type="text"
               placeholder="Search brands..."
               value={searchTerm}
-              onChange={(e) =>
-                setSearchTerm(e.target.value)
-              }
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
-
           </div>
-
         </div>
 
         {filteredBrands.length === 0 ? (
           <div className="brands-empty">
-
-            <div className="brands-empty-icon">
-              ◈
-            </div>
+            <div className="brands-empty-icon">◈</div>
 
             <h3>No brands found</h3>
 
-            <p>
-              Try changing your search or add a
-              new brand.
-            </p>
-
+            <p>Try changing your search or add a new brand.</p>
           </div>
         ) : (
           <div className="brands-table-wrapper">
-
             <table className="brands-table">
-
               <thead>
                 <tr>
                   <th>Brand</th>
@@ -396,53 +322,35 @@ const Brands = () => {
               </thead>
 
               <tbody>
-
                 {filteredBrands.map((brand) => {
-
-                  const productCount =
-                    brand.products?.length || 0;
+                  const productCount = brand.products?.length || 0;
 
                   const percentage =
                     totalProducts > 0
-                      ? Math.round(
-                          (productCount /
-                            totalProducts) *
-                            100
-                        )
+                      ? Math.round((productCount / totalProducts) * 100)
                       : 0;
 
-                  const isUsed =
-                    productCount > 0;
+                  const isUsed = productCount > 0;
 
                   return (
                     <tr key={brand.id}>
-
                       <td>
                         <div className="brand-profile">
-
                           <div className="brand-avatar">
-                            {brand.name
-                              .charAt(0)
-                              .toUpperCase()}
+                            {brand.name.charAt(0).toUpperCase()}
                           </div>
 
                           <div>
-                            <strong>
-                              {brand.name}
-                            </strong>
+                            <strong>{brand.name}</strong>
 
-                            <span>
-                              ID: {brand.id}
-                            </span>
+                            <span>ID: {brand.id}</span>
                           </div>
-
                         </div>
                       </td>
 
                       <td>
                         <span className="brand-description">
-                          {brand.description ||
-                            "No description"}
+                          {brand.description || "No description"}
                         </span>
                       </td>
 
@@ -454,7 +362,6 @@ const Brands = () => {
 
                       <td>
                         <div className="brand-usage">
-
                           <div className="brand-usage-bar">
                             <div
                               className="brand-usage-fill"
@@ -464,42 +371,29 @@ const Brands = () => {
                             ></div>
                           </div>
 
-                          <span>
-                            {percentage}%
-                          </span>
-
+                          <span>{percentage}%</span>
                         </div>
                       </td>
 
                       <td>
                         <span
                           className={`brand-status ${
-                            isUsed
-                              ? "active"
-                              : "unused"
+                            isUsed ? "active" : "unused"
                           }`}
                         >
                           <span></span>
 
-                          {isUsed
-                            ? "Active"
-                            : "Unused"}
+                          {isUsed ? "Active" : "Unused"}
                         </span>
                       </td>
-
                     </tr>
                   );
                 })}
-
               </tbody>
-
             </table>
-
           </div>
         )}
-
       </div>
-
     </div>
   );
 };

@@ -1,23 +1,86 @@
+
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const Sidebar = () => {
+  const { user } = useAuth();
+
   const menuItems = [
-    { name: "Dashboard", path: "/" },
-    { name: "Products", path: "/products" },
-    { name: "Inventory", path: "/inventory" },
-    { name: "Categories", path: "/categories" },
-    { name: "Subcategories", path: "/subcategories" },
-    { name: "Brands", path: "/brands" },
-    { name: "Suppliers", path: "/suppliers" },
-    { name: "Customers", path: "/customers" },
-    { name: "Purchases", path: "/purchases" },
-    { name: "Sales", path: "/sales" },
-    { name: "Reports", path: "/reports" },
-    { name: "Warehouse", path: "/warehouse" },
-    { name: "Returns", path: "/returns" },
-    { name: "Employees", path: "/employees" },
-    
+    {
+      name: "Dashboard",
+      path: "/",
+      roles: ["Manager", "Inventory Staff", "Sales Executive", "Accountant"],
+    },
+    {
+      name: "Products",
+      path: "/products",
+      roles: ["Manager", "Inventory Staff"],
+    },
+    {
+      name: "Inventory",
+      path: "/inventory",
+      roles: ["Manager", "Inventory Staff"],
+    },
+    {
+      name: "Categories",
+      path: "/categories",
+      roles: ["Manager", "Inventory Staff"],
+    },
+    {
+      name: "Subcategories",
+      path: "/subcategories",
+      roles: ["Manager", "Inventory Staff"],
+    },
+    {
+      name: "Brands",
+      path: "/brands",
+      roles: ["Manager", "Inventory Staff"],
+    },
+    {
+      name: "Suppliers",
+      path: "/suppliers",
+      roles: ["Manager", "Inventory Staff"],
+    },
+    {
+      name: "Customers",
+      path: "/customers",
+      roles: ["Manager", "Sales Executive"],
+    },
+    {
+      name: "Purchases",
+      path: "/purchases",
+      roles: ["Manager", "Inventory Staff"],
+    },
+    {
+      name: "Sales",
+      path: "/sales",
+      roles: ["Manager", "Sales Executive", "Accountant"],
+    },
+    {
+      name: "Reports",
+      path: "/reports",
+      roles: ["Manager", "Accountant"],
+    },
+    {
+      name: "Warehouse",
+      path: "/warehouse",
+      roles: ["Manager", "Inventory Staff"],
+    },
+    {
+      name: "Returns",
+      path: "/returns",
+      roles: ["Manager", "Sales Executive"],
+    },
+    {
+      name: "Employees",
+      path: "/employees",
+      roles: ["Manager"],
+    },
   ];
+
+  const visibleMenuItems = menuItems.filter((item) =>
+    item.roles.includes(user?.role || "")
+  );
 
   return (
     <aside className="sidebar">
@@ -27,7 +90,7 @@ const Sidebar = () => {
       </div>
 
       <nav className="sidebar-menu">
-        {menuItems.map((item) => (
+        {visibleMenuItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -44,3 +107,4 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
+

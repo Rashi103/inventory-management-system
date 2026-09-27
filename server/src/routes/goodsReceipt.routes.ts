@@ -1,9 +1,7 @@
+
 import { Router } from "express";
 
-import {
-  getBrands,
-  createBrand,
-} from "../controllers/brand.controller";
+import { createGoodsReceipt } from "../controllers/goodsReceipt.controller";
 
 import {
   authenticateToken,
@@ -12,20 +10,15 @@ import {
 
 const router = Router();
 
-// View brands
-router.get(
-  "/",
-  authenticateToken,
-  authorizeRoles("Manager", "Inventory Staff"),
-  getBrands
-);
+// ======================================================
+// CREATE GOODS RECEIPT
+// ======================================================
 
-// Create brand
 router.post(
   "/",
   authenticateToken,
   authorizeRoles("Manager", "Inventory Staff"),
-  createBrand
+  createGoodsReceipt
 );
 
 export default router;

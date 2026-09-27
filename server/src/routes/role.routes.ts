@@ -1,8 +1,20 @@
 import { Router } from "express";
+
 import { getRoles } from "../controllers/role.controller";
+
+import {
+  authenticateToken,
+  authorizeRoles,
+} from "../middleware/auth.middleware";
 
 const router = Router();
 
-router.get("/", getRoles);
+// View roles
+router.get(
+  "/",
+  authenticateToken,
+  authorizeRoles("Manager"),
+  getRoles
+);
 
 export default router;

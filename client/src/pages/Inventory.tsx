@@ -1,8 +1,7 @@
-
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import api from "../services/axios";
 import "./Inventory.css";
-
 interface Product {
   id: number;
   name: string;
@@ -40,9 +39,7 @@ const Inventory = () => {
     try {
       setLoading(true);
 
-      const response = await axios.get(
-        "http://localhost:5000/api/inventory"
-      );
+      const response = await api.get("/inventory");
 
       setInventory(response.data);
       setError("");
@@ -62,9 +59,7 @@ const Inventory = () => {
 
   const fetchWarehouses = async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:5000/api/warehouses"
-      );
+      const response = await api.get("/warehouses");
 
       setWarehouses(response.data);
     } catch (error) {

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./Purchases.css";
-
+import api from "../services/axios";
 interface Supplier {
   id: number;
   name: string;
@@ -66,9 +66,7 @@ const Purchases = () => {
     try {
       setLoading(true);
 
-      const response = await axios.get(
-        "http://localhost:5000/api/purchases"
-      );
+      const response = await api.get("/purchases");
 
       setPurchaseOrders(response.data);
       setError("");

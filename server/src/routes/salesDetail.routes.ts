@@ -1,13 +1,43 @@
+
 import { Router } from "express";
+
 import {
   createSalesDetail,
-  getProductPerformance,
+  getSalesPerformance,
 } from "../controllers/salesDetail.controller";
+
+import {
+  authenticateToken,
+  authorizeRoles,
+} from "../middleware/auth.middleware";
 
 const router = Router();
 
-router.post("/", createSalesDetail);
+// ======================================================
+// ADD PRODUCT TO SALES BILL
+// ======================================================
 
-router.get("/performance", getProductPerformance);
+router.post(
+  "/",
+  authenticateToken,
+  authorizeRoles("Manager", "Sales Executive"),
+  createSalesDetail
+);
+
+// ======================================================
+// GET SALES PERFORMANCE
+// ======================================================
+
+router.get(
+  "/performance",
+  authenticateToken,
+  authorizeRoles(
+    "Manager",
+    "Sales Executive",
+    "Accountant"
+  ),
+  getSalesPerformance
+);
 
 export default router;
+

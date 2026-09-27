@@ -16,7 +16,10 @@ import warehouseRoutes from "./routes/warehouse.routes";
 import purchaseRoutes from "./routes/purchase.routes";
 import returnRoutes from "./routes/return.routes";
 import roleRoutes from "./routes/role.routes";
-
+import authRoutes from "./routes/auth.routes";
+import goodsReceiptRoutes from "./routes/goodsReceipt.routes";
+import paymentRoutes from "./routes/payment.routes";
+import reportRoutes from "./routes/report.routes";
 dotenv.config();
 console.log("DATABASE_URL loaded:", !!process.env.DATABASE_URL);
 
@@ -37,6 +40,11 @@ app.use("/api/warehouses", warehouseRoutes);
 app.use("/api/purchases", purchaseRoutes);
 app.use("/api/returns", returnRoutes);
 app.use("/api/employees", employeeRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/goods-receipts", goodsReceiptRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/reports", reportRoutes);
+
 app.use("/api/roles", roleRoutes);
 app.get("/", async (_req, res) => {
   try {

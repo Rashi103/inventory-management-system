@@ -1,7 +1,7 @@
 
 import { Router } from "express";
 
-import { getCustomers } from "../controllers/customer.controller";
+import { createPayment } from "../controllers/payment.controller";
 
 import {
   authenticateToken,
@@ -10,12 +10,15 @@ import {
 
 const router = Router();
 
-// View customers
-router.get(
+router.post(
   "/",
   authenticateToken,
-  authorizeRoles("Manager", "Sales Executive"),
-  getCustomers
+  authorizeRoles(
+    "Manager",
+    "Sales Executive",
+    "Accountant"
+  ),
+  createPayment
 );
 
 export default router;

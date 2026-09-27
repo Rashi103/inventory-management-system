@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import api from "../services/axios";
 import "./Products.css";
 
 interface Category {
@@ -67,41 +68,28 @@ const emptyForm: ProductForm = {
 };
 
 const Products = () => {
-  const [products, setProducts] = useState<Product[]>(
-    []
-  );
+  const [products, setProducts] = useState<Product[]>([]);
 
-  const [categories, setCategories] = useState<
-    Category[]
-  >([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 
-  const [subCategories, setSubCategories] =
-    useState<SubCategory[]>([]);
+  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
 
-  const [brands, setBrands] = useState<Brand[]>(
-    []
-  );
+  const [brands, setBrands] = useState<Brand[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [searchTerm, setSearchTerm] =
-    useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const [categoryFilter, setCategoryFilter] =
-    useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
-  const [statusFilter, setStatusFilter] =
-    useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  const [showForm, setShowForm] =
-    useState(false);
+  const [showForm, setShowForm] = useState(false);
 
-  const [editingProduct, setEditingProduct] =
-    useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
-  const [form, setForm] =
-    useState<ProductForm>(emptyForm);
+  const [form, setForm] = useState<ProductForm>(emptyForm);
 
   // =========================
   // FETCH PRODUCTS
@@ -111,20 +99,15 @@ const Products = () => {
     try {
       setLoading(true);
 
-      const response = await axios.get(
-        "http://localhost:5000/api/products"
-      );
+      const response = await api.get("/products");
 
       setProducts(response.data);
       setError("");
     } catch (error) {
-      console.error(
-        "Error fetching products:",
-        error
-      );
+      console.error("Error fetching products:", error);
 
       setError(
-        "Failed to load products. Please make sure the server is running."
+        "Failed to load products. Please make sure the server is running.",
       );
     } finally {
       setLoading(false);
@@ -137,16 +120,11 @@ const Products = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:5000/api/categories"
-      );
+      const response = await api.get("/categories");
 
       setCategories(response.data);
     } catch (error) {
-      console.error(
-        "Error fetching categories:",
-        error
-      );
+      console.error("Error fetching categories:", error);
     }
   };
 
@@ -156,16 +134,11 @@ const Products = () => {
 
   const fetchSubCategories = async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:5000/api/subcategories"
-      );
+      const response = await api.get("/subcategories");
 
       setSubCategories(response.data);
     } catch (error) {
-      console.error(
-        "Error fetching subcategories:",
-        error
-      );
+      console.error("Error fetching subcategories:", error);
     }
   };
 
@@ -175,16 +148,11 @@ const Products = () => {
 
   const fetchBrands = async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:5000/api/brands"
-      );
+      const response = await api.get("/brands");
 
       setBrands(response.data);
     } catch (error) {
-      console.error(
-        "Error fetching brands:",
-        error
-      );
+      console.error("Error fetching brands:", error);
     }
   };
 
@@ -199,14 +167,11 @@ const Products = () => {
   // PRODUCT STOCK
   // =========================
 
-  const getProductStock = (
-    product: Product
-  ) => {
+  const getProductStock = (product: Product) => {
     return (
       product.inventories?.reduce(
-        (total, inventory) =>
-          total + Number(inventory.quantity || 0),
-        0
+        (total, inventory) => total + Number(inventory.quantity || 0),
+        0,
       ) || 0
     );
   };
@@ -242,81 +207,51 @@ const Products = () => {
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const search =
-        searchTerm.toLowerCase().trim();
+      const search = searchTerm.toLowerCase().trim();
 
       const matchesSearch =
         !search ||
-        product.name
-          .toLowerCase()
-          .includes(search) ||
-        product.sku
-          .toLowerCase()
-          .includes(search) ||
-        product.category.name
-          .toLowerCase()
-          .includes(search);
+        product.name.toLowerCase().includes(search) ||
+        product.sku.toLowerCase().includes(search) ||
+        product.category.name.toLowerCase().includes(search);
 
       const matchesCategory =
         categoryFilter === "all" ||
-        String(product.categoryId) ===
-          categoryFilter;
+        String(product.categoryId) === categoryFilter;
 
       const stock = getProductStock(product);
 
       const matchesStatus =
         statusFilter === "all" ||
-        (statusFilter === "in" &&
-          stock > 10) ||
-        (statusFilter === "low" &&
-          stock > 0 &&
-          stock <= 10) ||
-        (statusFilter === "out" &&
-          stock === 0);
+        (statusFilter === "in" && stock > 10) ||
+        (statusFilter === "low" && stock > 0 && stock <= 10) ||
+        (statusFilter === "out" && stock === 0);
 
-      return (
-        matchesSearch &&
-        matchesCategory &&
-        matchesStatus
-      );
+      return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [
-    products,
-    searchTerm,
-    categoryFilter,
-    statusFilter,
-  ]);
+  }, [products, searchTerm, categoryFilter, statusFilter]);
 
   // =========================
   // SUMMARY
   // =========================
 
-  const activeProducts = products.filter(
-    (product) => product.isActive
-  ).length;
+  const activeProducts = products.filter((product) => product.isActive).length;
 
-  const lowStockCount = products.filter(
-    (product) => {
-      const stock =
-        getProductStock(product);
+  const lowStockCount = products.filter((product) => {
+    const stock = getProductStock(product);
 
-      return stock > 0 && stock <= 10;
-    }
-  ).length;
+    return stock > 0 && stock <= 10;
+  }).length;
 
   const outOfStockCount = products.filter(
-    (product) =>
-      getProductStock(product) === 0
+    (product) => getProductStock(product) === 0,
   ).length;
 
   // =========================
   // FORM HANDLER
   // =========================
 
-  const handleInputChange = (
-    field: keyof ProductForm,
-    value: string
-  ) => {
+  const handleInputChange = (field: keyof ProductForm, value: string) => {
     setForm((previous) => ({
       ...previous,
       [field]: value,
@@ -347,29 +282,19 @@ const Products = () => {
   // EDIT PRODUCT
   // =========================
 
-  const handleEditProduct = (
-    product: Product
-  ) => {
+  const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
 
     setForm({
       name: product.name,
       sku: product.sku,
-      description:
-        product.description || "",
+      description: product.description || "",
       price: String(product.price),
       costPrice: String(product.costPrice),
       unit: product.unit,
-      categoryId: String(
-        product.categoryId
-      ),
-      subCategoryId:
-        product.subCategoryId
-          ? String(product.subCategoryId)
-          : "",
-      brandId: product.brandId
-        ? String(product.brandId)
-        : "",
+      categoryId: String(product.categoryId),
+      subCategoryId: product.subCategoryId ? String(product.subCategoryId) : "",
+      brandId: product.brandId ? String(product.brandId) : "",
     });
 
     setShowForm(true);
@@ -379,9 +304,7 @@ const Products = () => {
   // SUBMIT PRODUCT
   // =========================
 
-  const handleSubmit = async (
-    e: React.FormEvent
-  ) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!form.name.trim()) {
@@ -413,67 +336,38 @@ const Products = () => {
       const productData = {
         name: form.name.trim(),
         sku: form.sku.trim(),
-        description:
-          form.description.trim() || null,
+        description: form.description.trim() || null,
         price: Number(form.price),
         costPrice: Number(form.costPrice),
         unit: form.unit,
-        categoryId: Number(
-          form.categoryId
-        ),
-        subCategoryId:
-          form.subCategoryId
-            ? Number(form.subCategoryId)
-            : null,
-        brandId: form.brandId
-          ? Number(form.brandId)
-          : null,
+        categoryId: Number(form.categoryId),
+        subCategoryId: form.subCategoryId ? Number(form.subCategoryId) : null,
+        brandId: form.brandId ? Number(form.brandId) : null,
       };
 
       if (editingProduct) {
-        await axios.put(
-          `http://localhost:5000/api/products/${editingProduct.id}`,
-          productData
-        );
+        await api.put(`/products/${editingProduct.id}`, productData);
 
-        alert(
-          "Product updated successfully!"
-        );
+        alert("Product updated successfully!");
       } else {
-        await axios.post(
-          "http://localhost:5000/api/products",
-          productData
-        );
+        await api.post("/products", productData);
 
-        alert(
-          "Product added successfully!"
-        );
+        alert("Product added successfully!");
       }
 
       await fetchProducts();
       resetForm();
     } catch (error) {
-      console.error(
-        "Error saving product:",
-        error
-      );
+      console.error("Error saving product:", error);
 
       if (axios.isAxiosError(error)) {
-        if (
-          error.response?.status === 500
-        ) {
-          alert(
-            "Could not save product. The SKU may already exist."
-          );
+        if (error.response?.status === 500) {
+          alert("Could not save product. The SKU may already exist.");
         } else {
-          alert(
-            "Failed to save product. Please try again."
-          );
+          alert("Failed to save product. Please try again.");
         }
       } else {
-        alert(
-          "Failed to save product."
-        );
+        alert("Failed to save product.");
       }
     }
   };
@@ -501,23 +395,13 @@ const Products = () => {
     return (
       <div className="products-page">
         <div className="products-error">
-          <div className="products-error-icon">
-            !
-          </div>
+          <div className="products-error-icon">!</div>
 
-          <h2>
-            Products unavailable
-          </h2>
+          <h2>Products unavailable</h2>
 
           <p>{error}</p>
 
-          <button
-            onClick={() =>
-              window.location.reload()
-            }
-          >
-            Try Again
-          </button>
+          <button onClick={() => window.location.reload()}>Try Again</button>
         </div>
       </div>
     );
@@ -529,105 +413,70 @@ const Products = () => {
 
   return (
     <div className="products-page">
-
       {/* HEADER */}
 
       <div className="products-header">
-
         <div>
-          <div className="products-breadcrumb">
-            Dashboard / Products
-          </div>
+          <div className="products-breadcrumb">Dashboard / Products</div>
 
           <h1>Products</h1>
 
-          <p>
-            Manage your product catalog,
-            pricing and stock information.
-          </p>
+          <p>Manage your product catalog, pricing and stock information.</p>
         </div>
 
-        <button
-          className="products-add-button"
-          onClick={handleAddProduct}
-        >
+        <button className="products-add-button" onClick={handleAddProduct}>
           <span>+</span>
           Add Product
         </button>
-
       </div>
 
       {/* STATS */}
 
       <div className="products-stats">
-
         <div className="product-stat-card">
-          <div className="product-stat-icon purple">
-            📦
-          </div>
+          <div className="product-stat-icon purple">📦</div>
 
           <div>
             <span>Total Products</span>
-            <strong>
-              {products.length}
-            </strong>
+            <strong>{products.length}</strong>
           </div>
         </div>
 
         <div className="product-stat-card">
-          <div className="product-stat-icon green">
-            ✓
-          </div>
+          <div className="product-stat-icon green">✓</div>
 
           <div>
             <span>Active Products</span>
-            <strong>
-              {activeProducts}
-            </strong>
+            <strong>{activeProducts}</strong>
           </div>
         </div>
 
         <div className="product-stat-card">
-          <div className="product-stat-icon orange">
-            ⚠
-          </div>
+          <div className="product-stat-icon orange">⚠</div>
 
           <div>
             <span>Low Stock</span>
-            <strong>
-              {lowStockCount}
-            </strong>
+            <strong>{lowStockCount}</strong>
           </div>
         </div>
 
         <div className="product-stat-card">
-          <div className="product-stat-icon red">
-            !
-          </div>
+          <div className="product-stat-icon red">!</div>
 
           <div>
             <span>Out of Stock</span>
-            <strong>
-              {outOfStockCount}
-            </strong>
+            <strong>{outOfStockCount}</strong>
           </div>
         </div>
-
       </div>
 
       {/* ADD / EDIT FORM */}
 
       {showForm && (
         <div className="product-form-card">
-
           <div className="product-form-header">
-
             <div>
-              <h2>
-                {editingProduct
-                  ? "Edit Product"
-                  : "Add New Product"}
-              </h2>
+              <h2>{editingProduct ? "Edit Product" : "Add New Product"}</h2>
 
               <p>
                 {editingProduct
@@ -643,30 +492,17 @@ const Products = () => {
             >
               ×
             </button>
-
           </div>
 
-          <form
-            onSubmit={handleSubmit}
-            className="product-form"
-          >
-
+          <form onSubmit={handleSubmit} className="product-form">
             <div className="product-form-grid">
-
               <div className="product-form-group">
-                <label>
-                  Product Name *
-                </label>
+                <label>Product Name *</label>
 
                 <input
                   type="text"
                   value={form.name}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "name",
-                      e.target.value
-                    )
-                  }
+                  onChange={(e) => handleInputChange("name", e.target.value)}
                   placeholder="Enter product name"
                 />
               </div>
@@ -677,20 +513,13 @@ const Products = () => {
                 <input
                   type="text"
                   value={form.sku}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "sku",
-                      e.target.value
-                    )
-                  }
+                  onChange={(e) => handleInputChange("sku", e.target.value)}
                   placeholder="e.g. TEA-001"
                 />
               </div>
 
               <div className="product-form-group">
-                <label>
-                  Selling Price *
-                </label>
+                <label>Selling Price *</label>
 
                 <div className="input-with-prefix">
                   <span>₹</span>
@@ -700,21 +529,14 @@ const Products = () => {
                     min="0"
                     step="0.01"
                     value={form.price}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "price",
-                        e.target.value
-                      )
-                    }
+                    onChange={(e) => handleInputChange("price", e.target.value)}
                     placeholder="0.00"
                   />
                 </div>
               </div>
 
               <div className="product-form-group">
-                <label>
-                  Cost Price *
-                </label>
+                <label>Cost Price *</label>
 
                 <div className="input-with-prefix">
                   <span>₹</span>
@@ -725,10 +547,7 @@ const Products = () => {
                     step="0.01"
                     value={form.costPrice}
                     onChange={(e) =>
-                      handleInputChange(
-                        "costPrice",
-                        e.target.value
-                      )
+                      handleInputChange("costPrice", e.target.value)
                     }
                     placeholder="0.00"
                   />
@@ -740,37 +559,16 @@ const Products = () => {
 
                 <select
                   value={form.unit}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "unit",
-                      e.target.value
-                    )
-                  }
+                  onChange={(e) => handleInputChange("unit", e.target.value)}
                 >
-                  <option value="piece">
-                    Piece
-                  </option>
-                  <option value="packet">
-                    Packet
-                  </option>
-                  <option value="box">
-                    Box
-                  </option>
-                  <option value="kg">
-                    Kilogram
-                  </option>
-                  <option value="gram">
-                    Gram
-                  </option>
-                  <option value="liter">
-                    Liter
-                  </option>
-                  <option value="ml">
-                    Milliliter
-                  </option>
-                  <option value="bottle">
-                    Bottle
-                  </option>
+                  <option value="piece">Piece</option>
+                  <option value="packet">Packet</option>
+                  <option value="box">Box</option>
+                  <option value="kg">Kilogram</option>
+                  <option value="gram">Gram</option>
+                  <option value="liter">Liter</option>
+                  <option value="ml">Milliliter</option>
+                  <option value="bottle">Bottle</option>
                 </select>
               </div>
 
@@ -780,67 +578,37 @@ const Products = () => {
                 <select
                   value={form.categoryId}
                   onChange={(e) =>
-                    handleInputChange(
-                      "categoryId",
-                      e.target.value
-                    )
+                    handleInputChange("categoryId", e.target.value)
                   }
                 >
-                  <option value="">
-                    Select category
-                  </option>
+                  <option value="">Select category</option>
 
-                  {categories.map(
-                    (category) => (
-                      <option
-                        key={category.id}
-                        value={category.id}
-                      >
-                        {category.name}
-                      </option>
-                    )
-                  )}
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div className="product-form-group">
-                <label>
-                  Subcategory
-                </label>
+                <label>Subcategory</label>
 
                 <select
                   value={form.subCategoryId}
                   onChange={(e) =>
-                    handleInputChange(
-                      "subCategoryId",
-                      e.target.value
-                    )
+                    handleInputChange("subCategoryId", e.target.value)
                   }
                 >
-                  <option value="">
-                    Select subcategory
-                  </option>
+                  <option value="">Select subcategory</option>
 
                   {subCategories
-                    .filter(
-                      (subCategory) =>
-                        !form.categoryId ||
-                        true
-                    )
-                    .map(
-                      (subCategory) => (
-                        <option
-                          key={
-                            subCategory.id
-                          }
-                          value={
-                            subCategory.id
-                          }
-                        >
-                          {subCategory.name}
-                        </option>
-                      )
-                    )}
+                    .filter((subCategory) => !form.categoryId || true)
+                    .map((subCategory) => (
+                      <option key={subCategory.id} value={subCategory.id}>
+                        {subCategory.name}
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -849,22 +617,12 @@ const Products = () => {
 
                 <select
                   value={form.brandId}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "brandId",
-                      e.target.value
-                    )
-                  }
+                  onChange={(e) => handleInputChange("brandId", e.target.value)}
                 >
-                  <option value="">
-                    Select brand
-                  </option>
+                  <option value="">Select brand</option>
 
                   {brands.map((brand) => (
-                    <option
-                      key={brand.id}
-                      value={brand.id}
-                    >
+                    <option key={brand.id} value={brand.id}>
                       {brand.name}
                     </option>
                   ))}
@@ -877,20 +635,15 @@ const Products = () => {
                 <textarea
                   value={form.description}
                   onChange={(e) =>
-                    handleInputChange(
-                      "description",
-                      e.target.value
-                    )
+                    handleInputChange("description", e.target.value)
                   }
                   placeholder="Enter product description"
                   rows={3}
                 />
               </div>
-
             </div>
 
             <div className="product-form-actions">
-
               <button
                 type="button"
                 className="product-cancel-button"
@@ -899,39 +652,27 @@ const Products = () => {
                 Cancel
               </button>
 
-              <button
-                type="submit"
-                className="product-save-button"
-              >
-                {editingProduct
-                  ? "Update Product"
-                  : "Add Product"}
+              <button type="submit" className="product-save-button">
+                {editingProduct ? "Update Product" : "Add Product"}
               </button>
-
             </div>
-
           </form>
-
         </div>
       )}
 
       {/* PRODUCT LIST */}
 
       <div className="products-list-card">
-
         <div className="products-list-header">
-
           <div>
             <h2>Product Catalog</h2>
 
             <p>
-              {filteredProducts.length} of{" "}
-              {products.length} products
+              {filteredProducts.length} of {products.length} products
             </p>
           </div>
 
           <div className="products-filters">
-
             <div className="products-search">
               <span>⌕</span>
 
@@ -939,89 +680,49 @@ const Products = () => {
                 type="text"
                 placeholder="Search products..."
                 value={searchTerm}
-                onChange={(e) =>
-                  setSearchTerm(
-                    e.target.value
-                  )
-                }
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
 
             <select
               value={categoryFilter}
-              onChange={(e) =>
-                setCategoryFilter(
-                  e.target.value
-                )
-              }
+              onChange={(e) => setCategoryFilter(e.target.value)}
             >
-              <option value="all">
-                All Categories
-              </option>
+              <option value="all">All Categories</option>
 
-              {categories.map(
-                (category) => (
-                  <option
-                    key={category.id}
-                    value={category.id}
-                  >
-                    {category.name}
-                  </option>
-                )
-              )}
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
             </select>
 
             <select
               value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(
-                  e.target.value
-                )
-              }
+              onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="all">
-                All Status
-              </option>
+              <option value="all">All Status</option>
 
-              <option value="in">
-                In Stock
-              </option>
+              <option value="in">In Stock</option>
 
-              <option value="low">
-                Low Stock
-              </option>
+              <option value="low">Low Stock</option>
 
-              <option value="out">
-                Out of Stock
-              </option>
+              <option value="out">Out of Stock</option>
             </select>
-
           </div>
-
         </div>
 
         {filteredProducts.length === 0 ? (
           <div className="products-empty">
+            <div className="products-empty-icon">📦</div>
 
-            <div className="products-empty-icon">
-              📦
-            </div>
+            <h3>No products found</h3>
 
-            <h3>
-              No products found
-            </h3>
-
-            <p>
-              Try changing your search or
-              filters.
-            </p>
-
+            <p>Try changing your search or filters.</p>
           </div>
         ) : (
           <div className="products-table-wrapper">
-
             <table className="products-table">
-
               <thead>
                 <tr>
                   <th>Product</th>
@@ -1036,131 +737,82 @@ const Products = () => {
               </thead>
 
               <tbody>
+                {filteredProducts.map((product) => {
+                  const stock = getProductStock(product);
 
-                {filteredProducts.map(
-                  (product) => {
-                    const stock =
-                      getProductStock(
-                        product
-                      );
+                  const stockStatus = getStockStatus(stock);
 
-                    const stockStatus =
-                      getStockStatus(
-                        stock
-                      );
-
-                    return (
-                      <tr
-                        key={product.id}
-                      >
-
-                        <td>
-                          <div className="product-profile">
-
-                            <div className="product-avatar">
-                              {product.name
-                                .charAt(0)
-                                .toUpperCase()}
-                            </div>
-
-                            <div>
-                              <strong>
-                                {product.name}
-                              </strong>
-
-                              <span>
-                                {product.unit}
-                              </span>
-                            </div>
-
+                  return (
+                    <tr key={product.id}>
+                      <td>
+                        <div className="product-profile">
+                          <div className="product-avatar">
+                            {product.name.charAt(0).toUpperCase()}
                           </div>
-                        </td>
 
-                        <td>
-                          <span className="product-sku">
-                            {product.sku}
-                          </span>
-                        </td>
+                          <div>
+                            <strong>{product.name}</strong>
 
-                        <td>
-                          <span className="category-badge">
-                            {
-                              product
-                                .category
-                                .name
-                            }
-                          </span>
-                        </td>
-
-                        <td>
-                          <span className="brand-name">
-                            {product.brand
-                              ?.name ||
-                              "—"}
-                          </span>
-                        </td>
-
-                        <td>
-                          <strong className="product-price">
-                            ₹
-                            {Number(
-                              product.price
-                            ).toLocaleString(
-                              "en-IN"
-                            )}
-                          </strong>
-                        </td>
-
-                        <td>
-                          <div className="product-stock">
-                            <strong>
-                              {stock}
-                            </strong>
-
-                            <span>
-                              {product.unit}
-                            </span>
+                            <span>{product.unit}</span>
                           </div>
-                        </td>
+                        </div>
+                      </td>
 
-                        <td>
-                          <span
-                            className={`product-status ${stockStatus.className}`}
-                          >
-                            <span></span>
-                            {
-                              stockStatus.label
-                            }
-                          </span>
-                        </td>
+                      <td>
+                        <span className="product-sku">{product.sku}</span>
+                      </td>
 
-                        <td>
-                          <button
-                            className="product-edit-button"
-                            onClick={() =>
-                              handleEditProduct(
-                                product
-                              )
-                            }
-                          >
-                            Edit
-                          </button>
-                        </td>
+                      <td>
+                        <span className="category-badge">
+                          {product.category.name}
+                        </span>
+                      </td>
 
-                      </tr>
-                    );
-                  }
-                )}
+                      <td>
+                        <span className="brand-name">
+                          {product.brand?.name || "—"}
+                        </span>
+                      </td>
 
+                      <td>
+                        <strong className="product-price">
+                          ₹{Number(product.price).toLocaleString("en-IN")}
+                        </strong>
+                      </td>
+
+                      <td>
+                        <div className="product-stock">
+                          <strong>{stock}</strong>
+
+                          <span>{product.unit}</span>
+                        </div>
+                      </td>
+
+                      <td>
+                        <span
+                          className={`product-status ${stockStatus.className}`}
+                        >
+                          <span></span>
+                          {stockStatus.label}
+                        </span>
+                      </td>
+
+                      <td>
+                        <button
+                          className="product-edit-button"
+                          onClick={() => handleEditProduct(product)}
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
-
             </table>
-
           </div>
         )}
-
       </div>
-
     </div>
   );
 };

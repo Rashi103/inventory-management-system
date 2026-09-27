@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import "./Employees.css";
+import api from "../services/axios";
 
 interface Role {
   id: number;
@@ -51,7 +52,7 @@ const Employees = () => {
     try {
       setLoading(true);
 
-      const response = await axios.get("http://localhost:5000/api/employees");
+      const response = await api.get("/employees");
 
       setEmployees(response.data);
       setError("");
@@ -69,8 +70,7 @@ const Employees = () => {
 
   const fetchRoles = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/roles");
-
+      const response = await api.get("/roles");
       setRoles(response.data);
     } catch (error) {
       console.error("Error fetching roles:", error);
@@ -122,17 +122,13 @@ const Employees = () => {
       if (editingEmployee) {
         // UPDATE EMPLOYEE
 
-        await axios.put(
-          `http://localhost:5000/api/employees/${editingEmployee.id}`,
-          {
-            name: name.trim(),
-            email: email.trim(),
-            phone: phone.trim() || null,
-            address: address.trim() || null,
-            roleId: Number(roleId),
-            isActive: editingEmployee.isActive,
-          },
-        );
+        await api.post("/employees", {
+          name: name.trim(),
+          email: email.trim(),
+          phone: phone.trim() || null,
+          address: address.trim() || null,
+          roleId: Number(roleId),
+        });
 
         alert("Employee updated successfully!");
       } else {
@@ -195,9 +191,7 @@ const Employees = () => {
     }
 
     try {
-      await axios.patch(
-        `http://localhost:5000/api/employees/${employee.id}/status`,
-      );
+      await api.patch(`/employees/${employee.id}/status`);
 
       await fetchEmployees();
 

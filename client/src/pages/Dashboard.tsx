@@ -1,6 +1,8 @@
+
 import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
 import "./Dashboard.css";
+import api from "../services/axios";
+import { useAuth } from "../context/AuthContext";
 
 interface Product {
   id: number;
@@ -14,15 +16,6 @@ interface Product {
     id: number;
     name: string;
   };
-  inventories?: {
-    id: number;
-    quantity: number;
-    expiryDate: string | null;
-    warehouse?: {
-      id: number;
-      name: string;
-    };
-  }[];
 }
 
 interface Sale {
@@ -67,6 +60,8 @@ interface InventoryItem {
 }
 
 const Dashboard = () => {
+  const { user } = useAuth();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -74,6 +69,22 @@ const Dashboard = () => {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const role = user?.role;
+
+  const canViewProducts =
+    role === "Manager" || role === "Inventory Staff";
+
+  const canViewInventory =
+    role === "Manager" || role === "Inventory Staff";
+
+  const canViewSales =
+    role === "Manager" ||
+    role === "Sales Executive" ||
+    role === "Accountant";
+
+  const canViewCustomers =
+    role === "Manager" || role === "Sales Executive";
 
   // =========================
   // FETCH DASHBOARD DATA
@@ -83,49 +94,70 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-
-        const [
-          productsResponse,
-          salesResponse,
-          customersResponse,
-          inventoryResponse,
-        ] = await Promise.all([
-          axios.get(
-            "http://localhost:5000/api/products"
-          ),
-          axios.get(
-            "http://localhost:5000/api/sales"
-          ),
-          axios.get(
-            "http://localhost:5000/api/customers"
-          ),
-          axios.get(
-            "http://localhost:5000/api/inventory"
-          ),
-        ]);
-
-        setProducts(productsResponse.data);
-        setSales(salesResponse.data);
-        setCustomers(customersResponse.data);
-        setInventory(inventoryResponse.data);
-
         setError("");
+
+        if (role === "Manager") {
+          const [
+            productsResponse,
+            salesResponse,
+            customersResponse,
+            inventoryResponse,
+          ] = await Promise.all([
+            api.get("/products"),
+            api.get("/sales"),
+            api.get("/customers"),
+            api.get("/inventory"),
+          ]);
+
+          setProducts(productsResponse.data);
+          setSales(salesResponse.data);
+          setCustomers(customersResponse.data);
+          setInventory(inventoryResponse.data);
+        } else if (role === "Inventory Staff") {
+          const [productsResponse, inventoryResponse] =
+            await Promise.all([
+              api.get("/products"),
+              api.get("/inventory"),
+            ]);
+
+          setProducts(productsResponse.data);
+          setInventory(inventoryResponse.data);
+          setSales([]);
+          setCustomers([]);
+        } else if (role === "Sales Executive") {
+          const [salesResponse, customersResponse] =
+            await Promise.all([
+              api.get("/sales"),
+              api.get("/customers"),
+            ]);
+
+          setSales(salesResponse.data);
+          setCustomers(customersResponse.data);
+          setProducts([]);
+          setInventory([]);
+        } else if (role === "Accountant") {
+          const salesResponse = await api.get("/sales");
+
+          setSales(salesResponse.data);
+          setProducts([]);
+          setCustomers([]);
+          setInventory([]);
+        }
       } catch (error) {
-        console.error(
-          "Error fetching dashboard data:",
-          error
-        );
+        console.error("Error fetching dashboard data:", error);
 
         setError(
-          "Unable to load dashboard data. Please make sure the server is running."
+          "Unable to load dashboard data. Please make sure the server is running.",
         );
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDashboardData();
-  }, []);
+    if (role) {
+      fetchDashboardData();
+    }
+  }, [role]);
 
   // =========================
   // TOTAL SALES
@@ -133,9 +165,8 @@ const Dashboard = () => {
 
   const totalSales = useMemo(() => {
     return sales.reduce(
-      (total, sale) =>
-        total + Number(sale.grandTotal || 0),
-      0
+      (total, sale) => total + Number(sale.grandTotal || 0),
+      0,
     );
   }, [sales]);
 
@@ -145,9 +176,8 @@ const Dashboard = () => {
 
   const totalInventoryUnits = useMemo(() => {
     return inventory.reduce(
-      (total, item) =>
-        total + Number(item.quantity || 0),
-      0
+      (total, item) => total + Number(item.quantity || 0),
+      0,
     );
   }, [inventory]);
 
@@ -159,26 +189,23 @@ const Dashboard = () => {
     const productStock = new Map<number, number>();
 
     inventory.forEach((item) => {
-      const current =
-        productStock.get(item.product.id) || 0;
+      const current = productStock.get(item.product.id) || 0;
 
       productStock.set(
         item.product.id,
-        current + Number(item.quantity || 0)
+        current + Number(item.quantity || 0),
       );
     });
 
     return products
       .filter((product) => {
-        const stock =
-          productStock.get(product.id) || 0;
+        const stock = productStock.get(product.id) || 0;
 
         return stock > 0 && stock <= 10;
       })
       .map((product) => ({
         ...product,
-        stock:
-          productStock.get(product.id) || 0,
+        stock: productStock.get(product.id) || 0,
       }));
   }, [products, inventory]);
 
@@ -190,18 +217,16 @@ const Dashboard = () => {
     const productStock = new Map<number, number>();
 
     inventory.forEach((item) => {
-      const current =
-        productStock.get(item.product.id) || 0;
+      const current = productStock.get(item.product.id) || 0;
 
       productStock.set(
         item.product.id,
-        current + Number(item.quantity || 0)
+        current + Number(item.quantity || 0),
       );
     });
 
     return products.filter((product) => {
-      const stock =
-        productStock.get(product.id) || 0;
+      const stock = productStock.get(product.id) || 0;
 
       return stock === 0;
     });
@@ -233,7 +258,7 @@ const Dashboard = () => {
       .sort(
         (a, b) =>
           new Date(b.billDate).getTime() -
-          new Date(a.billDate).getTime()
+          new Date(a.billDate).getTime(),
       )
       .slice(0, 6);
   }, [sales]);
@@ -258,23 +283,21 @@ const Dashboard = () => {
       "Dec",
     ];
 
-    const currentYear =
-      new Date().getFullYear();
+    const currentYear = new Date().getFullYear();
 
-    const salesByMonth = months.map(
-      (month, index) => ({
-        month,
-        value: 0,
-        monthIndex: index,
-      })
-    );
+    const salesByMonth = months.map((month, index) => ({
+      month,
+      value: 0,
+      monthIndex: index,
+    }));
 
     sales.forEach((sale) => {
       const date = new Date(sale.billDate);
 
       if (date.getFullYear() === currentYear) {
-        salesByMonth[date.getMonth()].value +=
-          Number(sale.grandTotal || 0);
+        salesByMonth[date.getMonth()].value += Number(
+          sale.grandTotal || 0,
+        );
       }
     });
 
@@ -283,7 +306,7 @@ const Dashboard = () => {
 
   const maxMonthlySales = Math.max(
     ...monthlySales.map((item) => item.value),
-    1
+    1,
   );
 
   // =========================
@@ -291,19 +314,13 @@ const Dashboard = () => {
   // =========================
 
   const inventoryStatus = {
-    healthy: inventory.filter(
-      (item) => item.quantity > 10
-    ).length,
+    healthy: inventory.filter((item) => item.quantity > 10).length,
 
     low: inventory.filter(
-      (item) =>
-        item.quantity > 0 &&
-        item.quantity <= 10
+      (item) => item.quantity > 0 && item.quantity <= 10,
     ).length,
 
-    out: inventory.filter(
-      (item) => item.quantity === 0
-    ).length,
+    out: inventory.filter((item) => item.quantity === 0).length,
 
     expired: expiredItems.length,
   };
@@ -312,9 +329,7 @@ const Dashboard = () => {
   // FORMAT CURRENCY
   // =========================
 
-  const formatCurrency = (
-    amount: number
-  ) => {
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
@@ -327,14 +342,11 @@ const Dashboard = () => {
   // =========================
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString(
-      "en-IN",
-      {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }
-    );
+    return new Date(date).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   };
 
   // =========================
@@ -360,19 +372,13 @@ const Dashboard = () => {
     return (
       <div className="dashboard-page">
         <div className="dashboard-error">
-          <div className="dashboard-error-icon">
-            !
-          </div>
+          <div className="dashboard-error-icon">!</div>
 
           <h2>Dashboard unavailable</h2>
 
           <p>{error}</p>
 
-          <button
-            onClick={() =>
-              window.location.reload()
-            }
-          >
+          <button onClick={() => window.location.reload()}>
             Try Again
           </button>
         </div>
@@ -386,221 +392,172 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-page">
-
       {/* ================= HEADER ================= */}
 
       <div className="dashboard-header">
-
         <div>
-          <div className="dashboard-breadcrumb">
-            Dashboard
-          </div>
+          <div className="dashboard-breadcrumb">Dashboard</div>
 
           <h1>Good day 👋</h1>
 
           <p>
-            Here's what's happening with your
-            inventory today.
+            Here's what's happening with your inventory today.
           </p>
         </div>
 
         <div className="dashboard-header-info">
-          <div className="dashboard-date-icon">
-            📅
-          </div>
+          <div className="dashboard-date-icon">📅</div>
 
           <div>
             <span>Today</span>
 
             <strong>
-              {new Date().toLocaleDateString(
-                "en-IN",
-                {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                }
-              )}
+              {new Date().toLocaleDateString("en-IN", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}
             </strong>
           </div>
         </div>
-
       </div>
 
       {/* ================= KPI CARDS ================= */}
 
       <div className="dashboard-stats">
-
-        <div className="dashboard-stat-card">
-          <div className="stat-card-top">
-            <div className="stat-icon products-icon">
-              📦
+        {canViewProducts && (
+          <div className="dashboard-stat-card">
+            <div className="stat-card-top">
+              <div className="stat-icon products-icon">📦</div>
+              <span className="stat-label">PRODUCTS</span>
             </div>
 
-            <span className="stat-label">
-              PRODUCTS
-            </span>
+            <div className="stat-value">{products.length}</div>
+
+            <div className="stat-bottom">
+              <span>
+                {
+                  products.filter(
+                    (product) => product.isActive,
+                  ).length
+                }{" "}
+                active products
+              </span>
+
+              <span className="stat-arrow">→</span>
+            </div>
           </div>
+        )}
 
-          <div className="stat-value">
-            {products.length}
-          </div>
-
-          <div className="stat-bottom">
-            <span>
-              {products.filter(
-                (product) => product.isActive
-              ).length}{" "}
-              active products
-            </span>
-
-            <span className="stat-arrow">
-              →
-            </span>
-          </div>
-        </div>
-
-        <div className="dashboard-stat-card">
-          <div className="stat-card-top">
-            <div className="stat-icon sales-icon">
-              ₹
+        {canViewSales && (
+          <div className="dashboard-stat-card">
+            <div className="stat-card-top">
+              <div className="stat-icon sales-icon">₹</div>
+              <span className="stat-label">TOTAL SALES</span>
             </div>
 
-            <span className="stat-label">
-              TOTAL SALES
-            </span>
-          </div>
-
-          <div className="stat-value">
-            {formatCurrency(totalSales)}
-          </div>
-
-          <div className="stat-bottom">
-            <span>
-              {sales.length} sales recorded
-            </span>
-
-            <span className="stat-arrow">
-              →
-            </span>
-          </div>
-        </div>
-
-        <div className="dashboard-stat-card">
-          <div className="stat-card-top">
-            <div className="stat-icon customers-icon">
-              👥
+            <div className="stat-value">
+              {formatCurrency(totalSales)}
             </div>
 
-            <span className="stat-label">
-              CUSTOMERS
-            </span>
+            <div className="stat-bottom">
+              <span>{sales.length} sales recorded</span>
+
+              <span className="stat-arrow">→</span>
+            </div>
           </div>
+        )}
 
-          <div className="stat-value">
-            {customers.length}
-          </div>
-
-          <div className="stat-bottom">
-            <span>
-              {customers.filter(
-                (customer) => customer.isActive
-              ).length}{" "}
-              active customers
-            </span>
-
-            <span className="stat-arrow">
-              →
-            </span>
-          </div>
-        </div>
-
-        <div className="dashboard-stat-card">
-          <div className="stat-card-top">
-            <div className="stat-icon warning-icon">
-              ⚠
+        {canViewCustomers && (
+          <div className="dashboard-stat-card">
+            <div className="stat-card-top">
+              <div className="stat-icon customers-icon">👥</div>
+              <span className="stat-label">CUSTOMERS</span>
             </div>
 
-            <span className="stat-label">
-              STOCK ALERTS
-            </span>
+            <div className="stat-value">{customers.length}</div>
+
+            <div className="stat-bottom">
+              <span>
+                {
+                  customers.filter(
+                    (customer) => customer.isActive,
+                  ).length
+                }{" "}
+                active customers
+              </span>
+
+              <span className="stat-arrow">→</span>
+            </div>
           </div>
+        )}
 
-          <div className="stat-value">
-            {lowStockProducts.length +
-              outOfStockProducts.length}
+        {canViewInventory && (
+          <div className="dashboard-stat-card">
+            <div className="stat-card-top">
+              <div className="stat-icon warning-icon">⚠</div>
+              <span className="stat-label">STOCK ALERTS</span>
+            </div>
+
+            <div className="stat-value">
+              {lowStockProducts.length +
+                outOfStockProducts.length}
+            </div>
+
+            <div className="stat-bottom">
+              <span>
+                {outOfStockProducts.length} out of stock
+              </span>
+
+              <span className="stat-arrow">→</span>
+            </div>
           </div>
-
-          <div className="stat-bottom">
-            <span>
-              {outOfStockProducts.length} out of
-              stock
-            </span>
-
-            <span className="stat-arrow">
-              →
-            </span>
-          </div>
-        </div>
-
+        )}
       </div>
 
-      {/* ================= CHART + INVENTORY ================= */}
+      {/* ================= SALES + INVENTORY ================= */}
 
       <div className="dashboard-main-grid">
+        {canViewSales && (
+          <div className="dashboard-card sales-overview-card">
+            <div className="card-header">
+              <div>
+                <h2>Sales Overview</h2>
 
-        {/* SALES CHART */}
+                <p>
+                  Monthly sales for {new Date().getFullYear()}
+                </p>
+              </div>
 
-        <div className="dashboard-card sales-overview-card">
+              <div className="card-header-value">
+                <span>Total Revenue</span>
 
-          <div className="card-header">
-
-            <div>
-              <h2>Sales Overview</h2>
-
-              <p>
-                Monthly sales for{" "}
-                {new Date().getFullYear()}
-              </p>
+                <strong>
+                  {formatCurrency(totalSales)}
+                </strong>
+              </div>
             </div>
 
-            <div className="card-header-value">
-              <span>Total Revenue</span>
-              <strong>
-                {formatCurrency(totalSales)}
-              </strong>
-            </div>
+            <div className="sales-chart">
+              <div className="chart-y-axis">
+                <span>
+                  {formatCurrency(maxMonthlySales)}
+                </span>
 
-          </div>
+                <span>
+                  {formatCurrency(maxMonthlySales / 2)}
+                </span>
 
-          <div className="sales-chart">
+                <span>₹0</span>
+              </div>
 
-            <div className="chart-y-axis">
-              <span>
-                {formatCurrency(
-                  maxMonthlySales
-                )}
-              </span>
+              <div className="chart-area">
+                <div className="chart-grid-line line-one"></div>
+                <div className="chart-grid-line line-two"></div>
+                <div className="chart-grid-line line-three"></div>
 
-              <span>
-                {formatCurrency(
-                  maxMonthlySales / 2
-                )}
-              </span>
-
-              <span>₹0</span>
-            </div>
-
-            <div className="chart-area">
-
-              <div className="chart-grid-line line-one"></div>
-              <div className="chart-grid-line line-two"></div>
-              <div className="chart-grid-line line-three"></div>
-
-              <div className="chart-bars">
-
-                {monthlySales.map(
-                  (item) => {
+                <div className="chart-bars">
+                  {monthlySales.map((item) => {
                     const height =
                       item.value === 0
                         ? 4
@@ -608,7 +565,7 @@ const Dashboard = () => {
                             (item.value /
                               maxMonthlySales) *
                               100,
-                            8
+                            8,
                           );
 
                     return (
@@ -622,14 +579,12 @@ const Dashboard = () => {
                             height: `${height}%`,
                           }}
                           title={`${item.month}: ${formatCurrency(
-                            item.value
+                            item.value,
                           )}`}
                         >
                           {item.value > 0 && (
                             <span className="chart-tooltip">
-                              {formatCurrency(
-                                item.value
-                              )}
+                              {formatCurrency(item.value)}
                             </span>
                           )}
                         </div>
@@ -639,213 +594,169 @@ const Dashboard = () => {
                         </span>
                       </div>
                     );
-                  }
-                )}
-
+                  })}
+                </div>
               </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-        {/* INVENTORY OVERVIEW */}
-
-        <div className="dashboard-card inventory-overview-card">
-
-          <div className="card-header">
-            <div>
-              <h2>Inventory Overview</h2>
-
-              <p>
-                Current stock status
-              </p>
-            </div>
-
-            <div className="inventory-total">
-              <strong>
-                {totalInventoryUnits}
-              </strong>
-
-              <span>units</span>
             </div>
           </div>
+        )}
 
-          <div className="inventory-status-list">
-
-            <div className="inventory-status-item">
-              <div className="inventory-status-name">
-                <span className="status-dot healthy"></span>
-                <span>Healthy Stock</span>
+        {canViewInventory && (
+          <div className="dashboard-card inventory-overview-card">
+            <div className="card-header">
+              <div>
+                <h2>Inventory Overview</h2>
+                <p>Current stock status</p>
               </div>
 
-              <strong>
-                {inventoryStatus.healthy}
-              </strong>
+              <div className="inventory-total">
+                <strong>{totalInventoryUnits}</strong>
+                <span>units</span>
+              </div>
             </div>
 
-            <div className="inventory-progress">
-              <div
-                className="progress-healthy"
-                style={{
-                  width: `${
-                    inventory.length
-                      ? (inventoryStatus.healthy /
-                          inventory.length) *
-                        100
-                      : 0
-                  }%`,
-                }}
-              ></div>
-            </div>
+            <div className="inventory-status-list">
+              <div className="inventory-status-item">
+                <div className="inventory-status-name">
+                  <span className="status-dot healthy"></span>
+                  <span>Healthy Stock</span>
+                </div>
 
-            <div className="inventory-status-item">
-              <div className="inventory-status-name">
-                <span className="status-dot low"></span>
-                <span>Low Stock</span>
+                <strong>{inventoryStatus.healthy}</strong>
               </div>
 
-              <strong>
-                {inventoryStatus.low}
-              </strong>
-            </div>
-
-            <div className="inventory-progress">
-              <div
-                className="progress-low"
-                style={{
-                  width: `${
-                    inventory.length
-                      ? (inventoryStatus.low /
-                          inventory.length) *
-                        100
-                      : 0
-                  }%`,
-                }}
-              ></div>
-            </div>
-
-            <div className="inventory-status-item">
-              <div className="inventory-status-name">
-                <span className="status-dot out"></span>
-                <span>Out of Stock</span>
+              <div className="inventory-progress">
+                <div
+                  className="progress-healthy"
+                  style={{
+                    width: `${
+                      inventory.length
+                        ? (inventoryStatus.healthy /
+                            inventory.length) *
+                          100
+                        : 0
+                    }%`,
+                  }}
+                ></div>
               </div>
 
-              <strong>
-                {inventoryStatus.out}
-              </strong>
-            </div>
+              <div className="inventory-status-item">
+                <div className="inventory-status-name">
+                  <span className="status-dot low"></span>
+                  <span>Low Stock</span>
+                </div>
 
-            <div className="inventory-progress">
-              <div
-                className="progress-out"
-                style={{
-                  width: `${
-                    inventory.length
-                      ? (inventoryStatus.out /
-                          inventory.length) *
-                        100
-                      : 0
-                  }%`,
-                }}
-              ></div>
-            </div>
-
-            <div className="inventory-status-item">
-              <div className="inventory-status-name">
-                <span className="status-dot expired"></span>
-                <span>Expired</span>
+                <strong>{inventoryStatus.low}</strong>
               </div>
 
-              <strong>
-                {inventoryStatus.expired}
-              </strong>
-            </div>
+              <div className="inventory-progress">
+                <div
+                  className="progress-low"
+                  style={{
+                    width: `${
+                      inventory.length
+                        ? (inventoryStatus.low /
+                            inventory.length) *
+                          100
+                        : 0
+                    }%`,
+                  }}
+                ></div>
+              </div>
 
-            <div className="inventory-progress">
-              <div
-                className="progress-expired"
-                style={{
-                  width: `${
-                    inventory.length
-                      ? (inventoryStatus.expired /
-                          inventory.length) *
-                        100
-                      : 0
-                  }%`,
-                }}
-              ></div>
-            </div>
+              <div className="inventory-status-item">
+                <div className="inventory-status-name">
+                  <span className="status-dot out"></span>
+                  <span>Out of Stock</span>
+                </div>
 
+                <strong>{inventoryStatus.out}</strong>
+              </div>
+
+              <div className="inventory-progress">
+                <div
+                  className="progress-out"
+                  style={{
+                    width: `${
+                      inventory.length
+                        ? (inventoryStatus.out /
+                            inventory.length) *
+                          100
+                        : 0
+                    }%`,
+                  }}
+                ></div>
+              </div>
+
+              <div className="inventory-status-item">
+                <div className="inventory-status-name">
+                  <span className="status-dot expired"></span>
+                  <span>Expired</span>
+                </div>
+
+                <strong>{inventoryStatus.expired}</strong>
+              </div>
+
+              <div className="inventory-progress">
+                <div
+                  className="progress-expired"
+                  style={{
+                    width: `${
+                      inventory.length
+                        ? (inventoryStatus.expired /
+                            inventory.length) *
+                          100
+                        : 0
+                    }%`,
+                  }}
+                ></div>
+              </div>
+            </div>
           </div>
-
-        </div>
-
+        )}
       </div>
 
       {/* ================= LOWER GRID ================= */}
 
       <div className="dashboard-lower-grid">
+        {canViewSales && (
+          <div className="dashboard-card recent-sales-card">
+            <div className="card-header">
+              <div>
+                <h2>Recent Sales</h2>
+                <p>Latest transactions</p>
+              </div>
 
-        {/* RECENT SALES */}
-
-        <div className="dashboard-card recent-sales-card">
-
-          <div className="card-header">
-
-            <div>
-              <h2>Recent Sales</h2>
-
-              <p>
-                Latest transactions
-              </p>
+              <a href="/sales" className="view-all-link">
+                View all →
+              </a>
             </div>
 
-            <a
-              href="/sales"
-              className="view-all-link"
-            >
-              View all →
-            </a>
+            {recentSales.length === 0 ? (
+              <div className="dashboard-empty">
+                <span>🧾</span>
+                <p>No sales recorded yet.</p>
+              </div>
+            ) : (
+              <div className="sales-table-wrapper">
+                <table className="dashboard-table">
+                  <thead>
+                    <tr>
+                      <th>Invoice</th>
+                      <th>Customer</th>
+                      <th>Date</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
 
-          </div>
-
-          {recentSales.length === 0 ? (
-            <div className="dashboard-empty">
-              <span>🧾</span>
-              <p>No sales recorded yet.</p>
-            </div>
-          ) : (
-            <div className="sales-table-wrapper">
-
-              <table className="dashboard-table">
-
-                <thead>
-                  <tr>
-                    <th>Invoice</th>
-                    <th>Customer</th>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-
-                  {recentSales.map(
-                    (sale) => (
+                  <tbody>
+                    {recentSales.map((sale) => (
                       <tr key={sale.id}>
-
                         <td>
                           <span className="invoice-number">
                             INV-
-                            {String(
-                              sale.id
-                            ).padStart(
-                              4,
-                              "0"
-                            )}
+                            {String(sale.id).padStart(4, "0")}
                           </span>
                         </td>
 
@@ -860,25 +771,20 @@ const Dashboard = () => {
                             </div>
 
                             <span>
-                              {sale.customer
-                                ?.name ||
+                              {sale.customer?.name ||
                                 "Walk-in Customer"}
                             </span>
                           </div>
                         </td>
 
                         <td>
-                          {formatDate(
-                            sale.billDate
-                          )}
+                          {formatDate(sale.billDate)}
                         </td>
 
                         <td>
                           <strong>
                             {formatCurrency(
-                              Number(
-                                sale.grandTotal
-                              )
+                              Number(sale.grandTotal),
                             )}
                           </strong>
                         </td>
@@ -888,215 +794,183 @@ const Dashboard = () => {
                             {sale.status}
                           </span>
                         </td>
-
                       </tr>
-                    )
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </div>
-          )}
-
-        </div>
-
-        {/* STOCK ALERTS */}
-
-        <div className="dashboard-card stock-alert-card">
-
-          <div className="card-header">
-
-            <div>
-              <h2>Stock Alerts</h2>
-
-              <p>
-                Products that need attention
-              </p>
-            </div>
-
-            <a
-              href="/inventory"
-              className="view-all-link"
-            >
-              Inventory →
-            </a>
-
-          </div>
-
-          <div className="stock-alert-list">
-
-            {outOfStockProducts.length === 0 &&
-            lowStockProducts.length === 0 &&
-            expiredItems.length === 0 ? (
-              <div className="no-alerts">
-                <div>✓</div>
-                <strong>Everything looks good</strong>
-                <span>
-                  No stock alerts at the moment.
-                </span>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ) : (
-              <>
-                {outOfStockProducts
-                  .slice(0, 3)
-                  .map((product) => (
-                    <div
-                      className="stock-alert-item"
-                      key={`out-${product.id}`}
-                    >
-                      <div className="alert-icon out">
-                        !
-                      </div>
-
-                      <div className="alert-product">
-                        <strong>
-                          {product.name}
-                        </strong>
-
-                        <span>
-                          {product.sku}
-                        </span>
-                      </div>
-
-                      <span className="alert-badge out">
-                        Out of stock
-                      </span>
-                    </div>
-                  ))}
-
-                {lowStockProducts
-                  .slice(0, 3)
-                  .map((product) => (
-                    <div
-                      className="stock-alert-item"
-                      key={`low-${product.id}`}
-                    >
-                      <div className="alert-icon low">
-                        !
-                      </div>
-
-                      <div className="alert-product">
-                        <strong>
-                          {product.name}
-                        </strong>
-
-                        <span>
-                          {product.sku}
-                        </span>
-                      </div>
-
-                      <span className="alert-badge low">
-                        {product.stock} left
-                      </span>
-                    </div>
-                  ))}
-
-                {expiredItems
-                  .slice(0, 2)
-                  .map((item) => (
-                    <div
-                      className="stock-alert-item"
-                      key={`expired-${item.id}`}
-                    >
-                      <div className="alert-icon expired">
-                        !
-                      </div>
-
-                      <div className="alert-product">
-                        <strong>
-                          {item.product.name}
-                        </strong>
-
-                        <span>
-                          Batch{" "}
-                          {item.batchNumber}
-                        </span>
-                      </div>
-
-                      <span className="alert-badge expired">
-                        Expired
-                      </span>
-                    </div>
-                  ))}
-              </>
             )}
-
           </div>
+        )}
 
-        </div>
+        {canViewInventory && (
+          <div className="dashboard-card stock-alert-card">
+            <div className="card-header">
+              <div>
+                <h2>Stock Alerts</h2>
+                <p>Products that need attention</p>
+              </div>
 
+              <a
+                href="/inventory"
+                className="view-all-link"
+              >
+                Inventory →
+              </a>
+            </div>
+
+            <div className="stock-alert-list">
+              {outOfStockProducts.length === 0 &&
+              lowStockProducts.length === 0 &&
+              expiredItems.length === 0 ? (
+                <div className="no-alerts">
+                  <div>✓</div>
+
+                  <strong>Everything looks good</strong>
+
+                  <span>
+                    No stock alerts at the moment.
+                  </span>
+                </div>
+              ) : (
+                <>
+                  {outOfStockProducts
+                    .slice(0, 3)
+                    .map((product) => (
+                      <div
+                        className="stock-alert-item"
+                        key={`out-${product.id}`}
+                      >
+                        <div className="alert-icon out">
+                          !
+                        </div>
+
+                        <div className="alert-product">
+                          <strong>{product.name}</strong>
+                          <span>{product.sku}</span>
+                        </div>
+
+                        <span className="alert-badge out">
+                          Out of stock
+                        </span>
+                      </div>
+                    ))}
+
+                  {lowStockProducts
+                    .slice(0, 3)
+                    .map((product) => (
+                      <div
+                        className="stock-alert-item"
+                        key={`low-${product.id}`}
+                      >
+                        <div className="alert-icon low">
+                          !
+                        </div>
+
+                        <div className="alert-product">
+                          <strong>{product.name}</strong>
+                          <span>{product.sku}</span>
+                        </div>
+
+                        <span className="alert-badge low">
+                          {product.stock} left
+                        </span>
+                      </div>
+                    ))}
+
+                  {expiredItems
+                    .slice(0, 2)
+                    .map((item) => (
+                      <div
+                        className="stock-alert-item"
+                        key={`expired-${item.id}`}
+                      >
+                        <div className="alert-icon expired">
+                          !
+                        </div>
+
+                        <div className="alert-product">
+                          <strong>{item.product.name}</strong>
+
+                          <span>
+                            Batch {item.batchNumber}
+                          </span>
+                        </div>
+
+                        <span className="alert-badge expired">
+                          Expired
+                        </span>
+                      </div>
+                    ))}
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ================= QUICK SUMMARY ================= */}
 
       <div className="dashboard-summary-strip">
+        {canViewInventory && (
+          <>
+            <div className="summary-item">
+              <span className="summary-icon">📦</span>
 
-        <div className="summary-item">
-          <span className="summary-icon">
-            📦
-          </span>
+              <div>
+                <strong>{totalInventoryUnits}</strong>
+                <span>Total Units</span>
+              </div>
+            </div>
 
-          <div>
-            <strong>
-              {totalInventoryUnits}
-            </strong>
+            <div className="summary-divider"></div>
+          </>
+        )}
 
-            <span>Total Units</span>
+        {canViewSales && (
+          <>
+            <div className="summary-item">
+              <span className="summary-icon">🧾</span>
+
+              <div>
+                <strong>{sales.length}</strong>
+                <span>Total Bills</span>
+              </div>
+            </div>
+
+            <div className="summary-divider"></div>
+          </>
+        )}
+
+        {canViewCustomers && (
+          <>
+            <div className="summary-item">
+              <span className="summary-icon">👥</span>
+
+              <div>
+                <strong>{customers.length}</strong>
+                <span>Total Customers</span>
+              </div>
+            </div>
+
+            <div className="summary-divider"></div>
+          </>
+        )}
+
+        {canViewInventory && (
+          <div className="summary-item">
+            <span className="summary-icon">⚠</span>
+
+            <div>
+              <strong>{expiredItems.length}</strong>
+              <span>Expired Batches</span>
+            </div>
           </div>
-        </div>
-
-        <div className="summary-divider"></div>
-
-        <div className="summary-item">
-          <span className="summary-icon">
-            🧾
-          </span>
-
-          <div>
-            <strong>{sales.length}</strong>
-
-            <span>Total Bills</span>
-          </div>
-        </div>
-
-        <div className="summary-divider"></div>
-
-        <div className="summary-item">
-          <span className="summary-icon">
-            👥
-          </span>
-
-          <div>
-            <strong>
-              {customers.length}
-            </strong>
-
-            <span>Total Customers</span>
-          </div>
-        </div>
-
-        <div className="summary-divider"></div>
-
-        <div className="summary-item">
-          <span className="summary-icon">
-            ⚠
-          </span>
-
-          <div>
-            <strong>
-              {expiredItems.length}
-            </strong>
-
-            <span>Expired Batches</span>
-          </div>
-        </div>
-
+        )}
       </div>
-
     </div>
   );
 };
 
 export default Dashboard;
+

@@ -76,11 +76,11 @@ body {
 
 /* Main section */
 
-.main-section {
+.main-content {
   margin-left: 240px;
   width: calc(100% - 240px);
+  min-height: 100vh;
 }
-
 /* Navbar */
 
 .navbar {
@@ -411,3 +411,92 @@ body {
   background: #f3e8ff;
   color: #7e22ce;
 }
+
+
+/* =========================
+   NAVBAR USER
+   ========================= */
+
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.navbar-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.navbar-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  border: 1px solid #e2e8f0;
+}
+
+.navbar-user-details {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.navbar-user-details strong {
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.navbar-user-details span {
+  margin-top: 3px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* =========================
+   LOGOUT BUTTON
+   ========================= */
+
+.logout-button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 15px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.logout-icon {
+  font-size: 17px;
+  line-height: 1;
+  transform: rotate(180deg);
+}
+
+.logout-button:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+  transform: translateY(-1px);
+}
+
+.logout-button:active {
+  transform: translateY(0);
+}
+

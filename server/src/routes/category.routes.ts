@@ -6,13 +6,27 @@ import {
   createCategory,
 } from "../controllers/category.controller";
 
+import {
+  authenticateToken,
+  authorizeRoles,
+} from "../middleware/auth.middleware";
+
 const router = Router();
 
-// Get all categories
-router.get("/", getCategories);
+// View categories
+router.get(
+  "/",
+  authenticateToken,
+  authorizeRoles("Manager", "Inventory Staff"),
+  getCategories
+);
 
-// Create a category
-router.post("/", createCategory);
+// Create category
+router.post(
+  "/",
+  authenticateToken,
+  authorizeRoles("Manager", "Inventory Staff"),
+  createCategory
+);
 
 export default router;
-

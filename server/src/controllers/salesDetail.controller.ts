@@ -1,45 +1,214 @@
-import { Request, Response } from "express";
-import prisma from "../../lib/prisma";
 
-export const createSalesDetail = async (req: Request, res: Response) => {
+import { Response } from "express";
+import prisma from "../../lib/prisma";
+import { AuthRequest } from "../middleware/auth.middleware";
+
+// ======================================================
+// ADD PRODUCT TO SALES BILL
+// ======================================================
+
+export const createSalesDetail = async (
+  req: AuthRequest,
+  res: Response
+) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Authentication required",
+      });
+    }
+
     const {
       salesBillId,
       productId,
       quantity,
       unitPrice,
-      discount,
-      totalPrice,
+      discount = 0,
     } = req.body;
 
-    const salesDetail = await prisma.salesBillDetail.create({
-      data: {
-        salesBillId,
-        productId,
-        quantity,
-        unitPrice,
-        discount,
-        totalPrice,
+    // --------------------------------------------------
+    // VALIDATE INPUT
+    // --------------------------------------------------
+
+    if (!salesBillId || !productId || !quantity || unitPrice === undefined) {
+      return res.status(400).json({
+        message:
+          "salesBillId, productId, quantity and unitPrice are required",
+      });
+    }
+
+    const saleQuantity = Number(quantity);
+    const price = Number(unitPrice);
+    const discountAmount = Number(discount);
+
+    if (!Number.isInteger(saleQuantity) || saleQuantity <= 0) {
+      return res.status(400).json({
+        message: "Quantity must be a positive whole number",
+      });
+    }
+
+    if (!Number.isFinite(price) || price < 0) {
+      return res.status(400).json({
+        message: "Unit price must be a valid non-negative number",
+      });
+    }
+
+    if (!Number.isFinite(discountAmount) || discountAmount < 0) {
+      return res.status(400).json({
+        message: "Discount must be a valid non-negative number",
+      });
+    }
+
+    // --------------------------------------------------
+    // CHECK SALES BILL
+    // --------------------------------------------------
+
+    const salesBill = await prisma.salesBill.findUnique({
+      where: {
+        id: Number(salesBillId),
       },
     });
 
-    res.status(201).json(salesDetail);
-  } catch (error) {
-    console.error("Error creating sales detail:", error);
+    if (!salesBill) {
+      return res.status(404).json({
+        message: "Sales bill not found",
+      });
+    }
 
-    res.status(500).json({
-      message: "Failed to create sales detail",
+    // --------------------------------------------------
+    // CHECK PRODUCT
+    // --------------------------------------------------
+
+    const product = await prisma.product.findUnique({
+      where: {
+        id: Number(productId),
+      },
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        message: "Product not found",
+      });
+    }
+
+    if (!product.isActive) {
+      return res.status(400).json({
+        message: "Product is inactive",
+      });
+    }
+
+    // --------------------------------------------------
+    // CHECK INVENTORY
+    // --------------------------------------------------
+
+    const inventory = await prisma.inventory.findFirst({
+      where: {
+        productId: Number(productId),
+        quantity: {
+          gte: saleQuantity,
+        },
+      },
+      orderBy: [
+        {
+          expiryDate: "asc",
+        },
+        {
+          id: "asc",
+        },
+      ],
+    });
+
+    if (!inventory) {
+      return res.status(400).json({
+        message: "Insufficient stock for this product",
+      });
+    }
+
+    // --------------------------------------------------
+    // CALCULATE TOTAL
+    // --------------------------------------------------
+
+    const totalPrice =
+      saleQuantity * price - discountAmount;
+
+    if (totalPrice < 0) {
+      return res.status(400).json({
+        message: "Discount cannot be greater than item value",
+      });
+    }
+
+    // --------------------------------------------------
+    // CREATE DETAIL + REDUCE INVENTORY
+    // --------------------------------------------------
+
+    const result = await prisma.$transaction(async (tx) => {
+      const detail = await tx.salesBillDetail.create({
+        data: {
+          salesBillId: Number(salesBillId),
+          productId: Number(productId),
+          quantity: saleQuantity,
+          unitPrice: price,
+          discount: discountAmount,
+          totalPrice,
+        },
+        include: {
+          product: true,
+        },
+      });
+
+      await tx.inventory.update({
+        where: {
+          id: inventory.id,
+        },
+        data: {
+          quantity: {
+            decrement: saleQuantity,
+          },
+        },
+      });
+
+      await tx.stockTransaction.create({
+        data: {
+          productId: Number(productId),
+          warehouseId: inventory.warehouseId,
+          employeeId: req.user!.employeeId,
+          transactionType: "SALE",
+          quantity: saleQuantity,
+          referenceType: "SALES_BILL",
+          referenceId: Number(salesBillId),
+          remarks: "Stock issued against sales bill",
+        },
+      });
+
+      return detail;
+    });
+
+    return res.status(201).json({
+      message: "Product added to sales bill successfully",
+      detail: result,
+    });
+  } catch (error) {
+    console.error(
+      "Error creating sales detail:",
+      error
+    );
+
+    return res.status(500).json({
+      message: "Failed to add product to sales bill",
     });
   }
 };
 
-// GET product performance report
-export const getProductPerformance = async (
-  _req: Request,
+// ======================================================
+// GET SALES PERFORMANCE
+// ======================================================
+
+export const getSalesPerformance = async (
+  _req: AuthRequest,
   res: Response
 ) => {
   try {
-    const salesDetails = await prisma.salesBillDetail.findMany({
+    const details = await prisma.salesBillDetail.findMany({
       include: {
         product: true,
         salesBill: true,
@@ -51,49 +220,47 @@ export const getProductPerformance = async (
       {
         productId: number;
         productName: string;
-        sku: string;
         quantitySold: number;
-        revenue: number;
+        totalSales: number;
       }
     >();
 
-    salesDetails.forEach((detail) => {
-      const productId = detail.productId;
-
-      const existing = productMap.get(productId);
-
-      const quantitySold = Number(detail.quantity);
-      const revenue = Number(detail.totalPrice);
+    details.forEach((detail) => {
+      const existing = productMap.get(detail.productId);
 
       if (existing) {
-        existing.quantitySold += quantitySold;
-        existing.revenue += revenue;
+        existing.quantitySold += detail.quantity;
+        existing.totalSales += Number(detail.totalPrice);
       } else {
-        productMap.set(productId, {
-          productId: productId,
+        productMap.set(detail.productId, {
+          productId: detail.productId,
           productName: detail.product.name,
-          sku: detail.product.sku,
-          quantitySold: quantitySold,
-          revenue: revenue,
+          quantitySold: detail.quantity,
+          totalSales: Number(detail.totalPrice),
         });
       }
     });
 
-    const productPerformance = Array.from(productMap.values()).sort(
+    const performance = Array.from(
+      productMap.values()
+    ).sort(
       (a, b) => b.quantitySold - a.quantitySold
     );
 
-    res.status(200).json(productPerformance);
+    return res.status(200).json(performance);
   } catch (error) {
-    console.error("Error fetching product performance:", error);
+    console.error(
+      "Error fetching sales performance:",
+      error
+    );
 
-    res.status(500).json({
-      message: "Failed to fetch product performance",
+    return res.status(500).json({
+      message: "Failed to fetch sales performance",
     });
   }
 };
 
 export default {
   createSalesDetail,
-  getProductPerformance,
+  getSalesPerformance,
 };

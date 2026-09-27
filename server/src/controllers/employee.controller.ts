@@ -1,3 +1,4 @@
+
 import { Request, Response } from "express";
 import prisma from "../../lib/prisma";
 
@@ -5,9 +6,27 @@ import prisma from "../../lib/prisma";
 export const getEmployees = async (_req: Request, res: Response) => {
   try {
     const employees = await prisma.employee.findMany({
-      include: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        address: true,
+        roleId: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
         role: true,
-        userLogin: true,
+        userLogin: {
+          select: {
+            id: true,
+            username: true,
+            isActive: true,
+            lastLogin: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
       orderBy: {
         id: "asc",
@@ -61,6 +80,7 @@ export const createEmployee = async (
   }
 };
 
+// UPDATE an employee
 export const updateEmployee = async (
   req: Request,
   res: Response
@@ -89,18 +109,33 @@ export const updateEmployee = async (
         roleId: Number(roleId),
         isActive,
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        address: true,
+        roleId: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
         role: true,
-        userLogin: true,
+        userLogin: {
+          select: {
+            id: true,
+            username: true,
+            isActive: true,
+            lastLogin: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
     });
 
     res.status(200).json(employee);
   } catch (error) {
-    console.error(
-      "Error updating employee:",
-      error
-    );
+    console.error("Error updating employee:", error);
 
     res.status(500).json({
       message: "Failed to update employee",
@@ -108,6 +143,7 @@ export const updateEmployee = async (
   }
 };
 
+// TOGGLE employee status
 export const toggleEmployeeStatus = async (
   req: Request,
   res: Response
@@ -128,26 +164,40 @@ export const toggleEmployeeStatus = async (
       });
     }
 
-    const employee =
-      await prisma.employee.update({
-        where: {
-          id: employeeId,
+    const employee = await prisma.employee.update({
+      where: {
+        id: employeeId,
+      },
+      data: {
+        isActive: !existingEmployee.isActive,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        address: true,
+        roleId: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        role: true,
+        userLogin: {
+          select: {
+            id: true,
+            username: true,
+            isActive: true,
+            lastLogin: true,
+            createdAt: true,
+            updatedAt: true,
+          },
         },
-        data: {
-          isActive: !existingEmployee.isActive,
-        },
-        include: {
-          role: true,
-          userLogin: true,
-        },
-      });
+      },
+    });
 
     res.status(200).json(employee);
   } catch (error) {
-    console.error(
-      "Error changing employee status:",
-      error
-    );
+    console.error("Error changing employee status:", error);
 
     res.status(500).json({
       message: "Failed to change employee status",

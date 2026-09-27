@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import api from "../services/axios";
 import "./Sales.css";
 interface Product {
   id: number;
@@ -52,7 +53,7 @@ const Sales = () => {
   const fetchSales = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:5000/api/sales");
+      const response = await api.get("/sales");
       setSales(response.data);
       setError("");
     } catch (error) {

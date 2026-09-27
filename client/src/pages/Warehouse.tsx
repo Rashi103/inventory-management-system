@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./Warehouse.css";
-
+import api from "../services/axios";
 interface Warehouse {
   id: number;
   name: string;
@@ -29,9 +29,7 @@ const Warehouse = () => {
     try {
       setLoading(true);
 
-      const response = await axios.get(
-        "http://localhost:5000/api/warehouses"
-      );
+      const response = await api.get("/warehouses");
 
       setWarehouses(response.data);
       setError("");

@@ -1,6 +1,6 @@
-
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import api from "../services/axios";
 import "./SubCategories.css";
 
 interface Category {
@@ -44,10 +44,7 @@ const SubCategories = () => {
     try {
       setLoading(true);
 
-      const response = await axios.get(
-        "http://localhost:5000/api/subcategories"
-      );
-
+      const response = await api.get("/subcategories");
       setSubCategories(response.data);
       setError("");
     } catch (error) {
@@ -66,9 +63,7 @@ const SubCategories = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:5000/api/categories"
-      );
+     const response = await api.get("/categories");
 
       setCategories(response.data);
     } catch (error) {
