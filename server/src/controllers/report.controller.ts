@@ -1,4 +1,3 @@
-
 import { Response } from "express";
 import prisma from "../../lib/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
@@ -83,6 +82,59 @@ export const getSalesSummary = async (
   }
 };
 
+// Daily / Weekly / Monthly / Yearly sales report
+export const getSalesPeriodReport = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const period = String(req.query.period || "monthly");
+
+    if (!["daily", "weekly", "monthly", "yearly"].includes(period)) {
+      return res.status(400).json({
+        message:
+          "Invalid period. Use daily, weekly, monthly or yearly.",
+      });
+    }
+
+    let groupExpression: string;
+
+    if (period === "daily") {
+      groupExpression = `DATE("billDate")`;
+    } else if (period === "weekly") {
+      groupExpression = `DATE_TRUNC('week', "billDate")`;
+    } else if (period === "monthly") {
+      groupExpression = `DATE_TRUNC('month', "billDate")`;
+    } else {
+      groupExpression = `DATE_TRUNC('year', "billDate")`;
+    }
+
+    const result = await prisma.$queryRawUnsafe(
+      `
+      SELECT
+        ${groupExpression} AS period,
+        COUNT(*)::int AS bills,
+        COALESCE(SUM("grandTotal"), 0) AS revenue
+      FROM "SalesBill"
+      WHERE status = 'COMPLETED'
+      GROUP BY ${groupExpression}
+      ORDER BY ${groupExpression} ASC
+      `
+    );
+
+    return res.status(200).json({
+      period,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fetching sales period report:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch sales period report",
+    });
+  }
+};
+
 // Product sales performance
 export const getProductSalesSummary = async (
   _req: AuthRequest,
@@ -136,5 +188,5 @@ export default {
   getSalesSummary,
   getProductSalesSummary,
   getCustomerPurchaseSummary,
+  getSalesPeriodReport,
 };
-

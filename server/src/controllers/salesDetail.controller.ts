@@ -220,8 +220,9 @@ export const getSalesPerformance = async (
       {
         productId: number;
         productName: string;
+        sku: string;
         quantitySold: number;
-        totalSales: number;
+        revenue: number;
       }
     >();
 
@@ -230,20 +231,19 @@ export const getSalesPerformance = async (
 
       if (existing) {
         existing.quantitySold += detail.quantity;
-        existing.totalSales += Number(detail.totalPrice);
+        existing.revenue += Number(detail.totalPrice);
       } else {
         productMap.set(detail.productId, {
           productId: detail.productId,
           productName: detail.product.name,
+          sku: detail.product.sku,
           quantitySold: detail.quantity,
-          totalSales: Number(detail.totalPrice),
+          revenue: Number(detail.totalPrice),
         });
       }
     });
 
-    const performance = Array.from(
-      productMap.values()
-    ).sort(
+    const performance = Array.from(productMap.values()).sort(
       (a, b) => b.quantitySold - a.quantitySold
     );
 
@@ -258,9 +258,4 @@ export const getSalesPerformance = async (
       message: "Failed to fetch sales performance",
     });
   }
-};
-
-export default {
-  createSalesDetail,
-  getSalesPerformance,
 };

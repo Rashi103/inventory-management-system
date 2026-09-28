@@ -1,8 +1,8 @@
-
 import { useEffect, useMemo, useState } from "react";
 import "./Dashboard.css";
 import api from "../services/axios";
 import { useAuth } from "../context/AuthContext";
+import { getSalesPeriodReport } from "../services/reportServices";
 
 interface Product {
   id: number;
@@ -59,6 +59,14 @@ interface InventoryItem {
   };
 }
 
+interface PeriodReport {
+  period: string;
+  bills: number;
+  revenue: string | number;
+}
+
+type ReportPeriod = "daily" | "weekly" | "monthly" | "yearly";
+
 const Dashboard = () => {
   const { user } = useAuth();
 
@@ -66,6 +74,10 @@ const Dashboard = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+
+  const [periodReport, setPeriodReport] = useState<PeriodReport[]>([]);
+  const [reportPeriod, setReportPeriod] =
+    useState<ReportPeriod>("monthly");
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -102,52 +114,91 @@ const Dashboard = () => {
             salesResponse,
             customersResponse,
             inventoryResponse,
+            reportResponse,
           ] = await Promise.all([
             api.get("/products"),
             api.get("/sales"),
             api.get("/customers"),
             api.get("/inventory"),
+            getSalesPeriodReport(reportPeriod),
           ]);
 
           setProducts(productsResponse.data);
           setSales(salesResponse.data);
           setCustomers(customersResponse.data);
           setInventory(inventoryResponse.data);
+
+          setPeriodReport(
+            (reportResponse.data || []).map((item) => ({
+              period: item.period,
+              bills: Number(item.bills || 0),
+              revenue: Number(item.revenue || 0),
+            }))
+          );
         } else if (role === "Inventory Staff") {
-          const [productsResponse, inventoryResponse] =
-            await Promise.all([
-              api.get("/products"),
-              api.get("/inventory"),
-            ]);
+          const [
+            productsResponse,
+            inventoryResponse,
+          ] = await Promise.all([
+            api.get("/products"),
+            api.get("/inventory"),
+          ]);
 
           setProducts(productsResponse.data);
           setInventory(inventoryResponse.data);
           setSales([]);
           setCustomers([]);
+          setPeriodReport([]);
         } else if (role === "Sales Executive") {
-          const [salesResponse, customersResponse] =
-            await Promise.all([
-              api.get("/sales"),
-              api.get("/customers"),
-            ]);
+          const [
+            salesResponse,
+            customersResponse,
+            reportResponse,
+          ] = await Promise.all([
+            api.get("/sales"),
+            api.get("/customers"),
+            getSalesPeriodReport(reportPeriod),
+          ]);
 
           setSales(salesResponse.data);
           setCustomers(customersResponse.data);
           setProducts([]);
           setInventory([]);
+
+          setPeriodReport(
+            (reportResponse.data || []).map((item) => ({
+              period: item.period,
+              bills: Number(item.bills || 0),
+              revenue: Number(item.revenue || 0),
+            }))
+          );
         } else if (role === "Accountant") {
-          const salesResponse = await api.get("/sales");
+          const [
+            salesResponse,
+            reportResponse,
+          ] = await Promise.all([
+            api.get("/sales"),
+            getSalesPeriodReport(reportPeriod),
+          ]);
 
           setSales(salesResponse.data);
           setProducts([]);
           setCustomers([]);
           setInventory([]);
+
+          setPeriodReport(
+            (reportResponse.data || []).map((item) => ({
+              period: item.period,
+              bills: Number(item.bills || 0),
+              revenue: Number(item.revenue || 0),
+            }))
+          );
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
 
         setError(
-          "Unable to load dashboard data. Please make sure the server is running.",
+          "Unable to load dashboard data. Please make sure the server is running."
         );
       } finally {
         setLoading(false);
@@ -157,7 +208,7 @@ const Dashboard = () => {
     if (role) {
       fetchDashboardData();
     }
-  }, [role]);
+  }, [role, reportPeriod]);
 
   // =========================
   // TOTAL SALES
@@ -166,7 +217,7 @@ const Dashboard = () => {
   const totalSales = useMemo(() => {
     return sales.reduce(
       (total, sale) => total + Number(sale.grandTotal || 0),
-      0,
+      0
     );
   }, [sales]);
 
@@ -177,7 +228,7 @@ const Dashboard = () => {
   const totalInventoryUnits = useMemo(() => {
     return inventory.reduce(
       (total, item) => total + Number(item.quantity || 0),
-      0,
+      0
     );
   }, [inventory]);
 
@@ -193,7 +244,7 @@ const Dashboard = () => {
 
       productStock.set(
         item.product.id,
-        current + Number(item.quantity || 0),
+        current + Number(item.quantity || 0)
       );
     });
 
@@ -221,7 +272,7 @@ const Dashboard = () => {
 
       productStock.set(
         item.product.id,
-        current + Number(item.quantity || 0),
+        current + Number(item.quantity || 0)
       );
     });
 
@@ -258,69 +309,89 @@ const Dashboard = () => {
       .sort(
         (a, b) =>
           new Date(b.billDate).getTime() -
-          new Date(a.billDate).getTime(),
+          new Date(a.billDate).getTime()
       )
       .slice(0, 6);
   }, [sales]);
 
   // =========================
-  // SALES BY MONTH
+  // PERIOD REPORT TOTAL
   // =========================
 
-  const monthlySales = useMemo(() => {
-    const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
+  const periodRevenue = useMemo(() => {
+    return periodReport.reduce(
+      (total, item) => total + Number(item.revenue || 0),
+      0
+    );
+  }, [periodReport]);
 
-    const currentYear = new Date().getFullYear();
+  // =========================
+  // MAX PERIOD SALES
+  // =========================
 
-    const salesByMonth = months.map((month, index) => ({
-      month,
-      value: 0,
-      monthIndex: index,
-    }));
+  const maxPeriodSales = useMemo(() => {
+    return Math.max(
+      ...periodReport.map((item) =>
+        Number(item.revenue || 0)
+      ),
+      1
+    );
+  }, [periodReport]);
 
-    sales.forEach((sale) => {
-      const date = new Date(sale.billDate);
+  // =========================
+  // FORMAT PERIOD LABEL
+  // =========================
 
-      if (date.getFullYear() === currentYear) {
-        salesByMonth[date.getMonth()].value += Number(
-          sale.grandTotal || 0,
-        );
-      }
+  const formatPeriod = (period: string) => {
+    const date = new Date(period);
+
+    if (Number.isNaN(date.getTime())) {
+      return period;
+    }
+
+    if (reportPeriod === "daily") {
+      return date.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+      });
+    }
+
+    if (reportPeriod === "weekly") {
+      return `Week ${date.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+      })}`;
+    }
+
+    if (reportPeriod === "monthly") {
+      return date.toLocaleDateString("en-IN", {
+        month: "short",
+      });
+    }
+
+    return date.toLocaleDateString("en-IN", {
+      year: "numeric",
     });
-
-    return salesByMonth;
-  }, [sales]);
-
-  const maxMonthlySales = Math.max(
-    ...monthlySales.map((item) => item.value),
-    1,
-  );
+  };
 
   // =========================
   // INVENTORY STATUS
   // =========================
 
   const inventoryStatus = {
-    healthy: inventory.filter((item) => item.quantity > 10).length,
-
-    low: inventory.filter(
-      (item) => item.quantity > 0 && item.quantity <= 10,
+    healthy: inventory.filter(
+      (item) => item.quantity > 10
     ).length,
 
-    out: inventory.filter((item) => item.quantity === 0).length,
+    low: inventory.filter(
+      (item) =>
+        item.quantity > 0 &&
+        item.quantity <= 10
+    ).length,
+
+    out: inventory.filter(
+      (item) => item.quantity === 0
+    ).length,
 
     expired: expiredItems.length,
   };
@@ -358,6 +429,7 @@ const Dashboard = () => {
       <div className="dashboard-page">
         <div className="dashboard-loading">
           <div className="dashboard-spinner"></div>
+
           <p>Loading dashboard...</p>
         </div>
       </div>
@@ -372,13 +444,19 @@ const Dashboard = () => {
     return (
       <div className="dashboard-page">
         <div className="dashboard-error">
-          <div className="dashboard-error-icon">!</div>
+          <div className="dashboard-error-icon">
+            !
+          </div>
 
           <h2>Dashboard unavailable</h2>
 
           <p>{error}</p>
 
-          <button onClick={() => window.location.reload()}>
+          <button
+            onClick={() =>
+              window.location.reload()
+            }
+          >
             Try Again
           </button>
         </div>
@@ -392,31 +470,42 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-page">
+
       {/* ================= HEADER ================= */}
 
       <div className="dashboard-header">
         <div>
-          <div className="dashboard-breadcrumb">Dashboard</div>
+          <div className="dashboard-breadcrumb">
+            Dashboard
+          </div>
 
-          <h1>Good day 👋</h1>
+          <h1>
+            Good day {user?.name ? user.name : ""}
+          </h1>
 
           <p>
-            Here's what's happening with your inventory today.
+            Here's what's happening with your
+            inventory today.
           </p>
         </div>
 
         <div className="dashboard-header-info">
-          <div className="dashboard-date-icon">📅</div>
+          <div className="dashboard-date-icon">
+            📅
+          </div>
 
           <div>
             <span>Today</span>
 
             <strong>
-              {new Date().toLocaleDateString("en-IN", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              })}
+              {new Date().toLocaleDateString(
+                "en-IN",
+                {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                }
+              )}
             </strong>
           </div>
         </div>
@@ -425,26 +514,37 @@ const Dashboard = () => {
       {/* ================= KPI CARDS ================= */}
 
       <div className="dashboard-stats">
+
         {canViewProducts && (
           <div className="dashboard-stat-card">
             <div className="stat-card-top">
-              <div className="stat-icon products-icon">📦</div>
-              <span className="stat-label">PRODUCTS</span>
+              <div className="stat-icon products-icon">
+                📦
+              </div>
+
+              <span className="stat-label">
+                PRODUCTS
+              </span>
             </div>
 
-            <div className="stat-value">{products.length}</div>
+            <div className="stat-value">
+              {products.length}
+            </div>
 
             <div className="stat-bottom">
               <span>
                 {
                   products.filter(
-                    (product) => product.isActive,
+                    (product) =>
+                      product.isActive
                   ).length
                 }{" "}
                 active products
               </span>
 
-              <span className="stat-arrow">→</span>
+              <span className="stat-arrow">
+                →
+              </span>
             </div>
           </div>
         )}
@@ -452,8 +552,13 @@ const Dashboard = () => {
         {canViewSales && (
           <div className="dashboard-stat-card">
             <div className="stat-card-top">
-              <div className="stat-icon sales-icon">₹</div>
-              <span className="stat-label">TOTAL SALES</span>
+              <div className="stat-icon sales-icon">
+                ₹
+              </div>
+
+              <span className="stat-label">
+                TOTAL SALES
+              </span>
             </div>
 
             <div className="stat-value">
@@ -461,9 +566,13 @@ const Dashboard = () => {
             </div>
 
             <div className="stat-bottom">
-              <span>{sales.length} sales recorded</span>
+              <span>
+                {sales.length} sales recorded
+              </span>
 
-              <span className="stat-arrow">→</span>
+              <span className="stat-arrow">
+                →
+              </span>
             </div>
           </div>
         )}
@@ -471,23 +580,33 @@ const Dashboard = () => {
         {canViewCustomers && (
           <div className="dashboard-stat-card">
             <div className="stat-card-top">
-              <div className="stat-icon customers-icon">👥</div>
-              <span className="stat-label">CUSTOMERS</span>
+              <div className="stat-icon customers-icon">
+                👥
+              </div>
+
+              <span className="stat-label">
+                CUSTOMERS
+              </span>
             </div>
 
-            <div className="stat-value">{customers.length}</div>
+            <div className="stat-value">
+              {customers.length}
+            </div>
 
             <div className="stat-bottom">
               <span>
                 {
                   customers.filter(
-                    (customer) => customer.isActive,
+                    (customer) =>
+                      customer.isActive
                   ).length
                 }{" "}
                 active customers
               </span>
 
-              <span className="stat-arrow">→</span>
+              <span className="stat-arrow">
+                →
+              </span>
             </div>
           </div>
         )}
@@ -495,8 +614,13 @@ const Dashboard = () => {
         {canViewInventory && (
           <div className="dashboard-stat-card">
             <div className="stat-card-top">
-              <div className="stat-icon warning-icon">⚠</div>
-              <span className="stat-label">STOCK ALERTS</span>
+              <div className="stat-icon warning-icon">
+                ⚠
+              </div>
+
+              <span className="stat-label">
+                STOCK ALERTS
+              </span>
             </div>
 
             <div className="stat-value">
@@ -506,10 +630,13 @@ const Dashboard = () => {
 
             <div className="stat-bottom">
               <span>
-                {outOfStockProducts.length} out of stock
+                {outOfStockProducts.length} out of
+                stock
               </span>
 
-              <span className="stat-arrow">→</span>
+              <span className="stat-arrow">
+                →
+              </span>
             </div>
           </div>
         )}
@@ -518,14 +645,18 @@ const Dashboard = () => {
       {/* ================= SALES + INVENTORY ================= */}
 
       <div className="dashboard-main-grid">
+
         {canViewSales && (
           <div className="dashboard-card sales-overview-card">
+
             <div className="card-header">
               <div>
                 <h2>Sales Overview</h2>
 
                 <p>
-                  Monthly sales for {new Date().getFullYear()}
+                  {reportPeriod.charAt(0).toUpperCase() +
+                    reportPeriod.slice(1)}{" "}
+                  sales report
                 </p>
               </div>
 
@@ -533,444 +664,399 @@ const Dashboard = () => {
                 <span>Total Revenue</span>
 
                 <strong>
-                  {formatCurrency(totalSales)}
+                  {formatCurrency(
+                    periodRevenue
+                  )}
                 </strong>
               </div>
             </div>
 
+            {/* ================= PERIOD BUTTONS ================= */}
+
+            <div className="sales-period-buttons">
+              <button
+                className={
+                  reportPeriod === "daily"
+                    ? "active"
+                    : ""
+                }
+                onClick={() =>
+                  setReportPeriod("daily")
+                }
+              >
+                Daily
+              </button>
+
+              <button
+                className={
+                  reportPeriod === "weekly"
+                    ? "active"
+                    : ""
+                }
+                onClick={() =>
+                  setReportPeriod("weekly")
+                }
+              >
+                Weekly
+              </button>
+
+              <button
+                className={
+                  reportPeriod === "monthly"
+                    ? "active"
+                    : ""
+                }
+                onClick={() =>
+                  setReportPeriod("monthly")
+                }
+              >
+                Monthly
+              </button>
+
+              <button
+                className={
+                  reportPeriod === "yearly"
+                    ? "active"
+                    : ""
+                }
+                onClick={() =>
+                  setReportPeriod("yearly")
+                }
+              >
+                Yearly
+              </button>
+            </div>
+
+            {/* ================= SALES CHART ================= */}
+
             <div className="sales-chart">
+
               <div className="chart-y-axis">
                 <span>
-                  {formatCurrency(maxMonthlySales)}
+                  {formatCurrency(
+                    maxPeriodSales
+                  )}
                 </span>
 
                 <span>
-                  {formatCurrency(maxMonthlySales / 2)}
+                  {formatCurrency(
+                    maxPeriodSales / 2
+                  )}
                 </span>
 
                 <span>₹0</span>
               </div>
 
               <div className="chart-area">
+
                 <div className="chart-grid-line line-one"></div>
+
                 <div className="chart-grid-line line-two"></div>
+
                 <div className="chart-grid-line line-three"></div>
 
                 <div className="chart-bars">
-                  {monthlySales.map((item) => {
-                    const height =
-                      item.value === 0
-                        ? 4
-                        : Math.max(
-                            (item.value /
-                              maxMonthlySales) *
-                              100,
-                            8,
+
+                  {periodReport.length > 0 ? (
+                    periodReport.map(
+                      (item, index) => {
+                        const value =
+                          Number(
+                            item.revenue || 0
                           );
 
-                    return (
-                      <div
-                        className="chart-bar-wrapper"
-                        key={item.month}
-                      >
-                        <div
-                          className="chart-bar"
-                          style={{
-                            height: `${height}%`,
-                          }}
-                          title={`${item.month}: ${formatCurrency(
-                            item.value,
-                          )}`}
-                        >
-                          {item.value > 0 && (
-                            <span className="chart-tooltip">
-                              {formatCurrency(item.value)}
-                            </span>
-                          )}
-                        </div>
+                        const height =
+                          value === 0
+                            ? 4
+                            : Math.max(
+                                (value /
+                                  maxPeriodSales) *
+                                  100,
+                                8
+                              );
 
-                        <span className="chart-month">
-                          {item.month}
-                        </span>
-                      </div>
-                    );
-                  })}
+                        return (
+                          <div
+                            className="chart-bar-wrapper"
+                            key={`${item.period}-${index}`}
+                          >
+                            <div
+                              className="chart-bar"
+                              style={{
+                                height: `${height}%`,
+                              }}
+                              title={`${formatPeriod(
+                                item.period
+                              )}: ${formatCurrency(
+                                value
+                              )}`}
+                            >
+                              {value > 0 && (
+                                <span className="chart-tooltip">
+                                  {formatCurrency(
+                                    value
+                                  )}
+                                </span>
+                              )}
+                            </div>
+
+                            <span className="chart-month">
+                              {formatPeriod(
+                                item.period
+                              )}
+                            </span>
+                          </div>
+                        );
+                      }
+                    )
+                  ) : (
+                    <div className="no-sales-data">
+                      No sales data available
+                    </div>
+                  )}
+
                 </div>
               </div>
             </div>
           </div>
         )}
 
+        {/* ================= INVENTORY OVERVIEW ================= */}
+
         {canViewInventory && (
-          <div className="dashboard-card inventory-overview-card">
+          <div className="dashboard-card">
+
             <div className="card-header">
               <div>
                 <h2>Inventory Overview</h2>
-                <p>Current stock status</p>
+
+                <p>
+                  Current inventory status
+                </p>
               </div>
 
-              <div className="inventory-total">
-                <strong>{totalInventoryUnits}</strong>
-                <span>units</span>
+              <div className="card-header-value">
+                <span>Total Units</span>
+
+                <strong>
+                  {totalInventoryUnits}
+                </strong>
               </div>
             </div>
 
             <div className="inventory-status-list">
+
               <div className="inventory-status-item">
-                <div className="inventory-status-name">
-                  <span className="status-dot healthy"></span>
-                  <span>Healthy Stock</span>
-                </div>
+                <span>Healthy Stock</span>
 
-                <strong>{inventoryStatus.healthy}</strong>
-              </div>
-
-              <div className="inventory-progress">
-                <div
-                  className="progress-healthy"
-                  style={{
-                    width: `${
-                      inventory.length
-                        ? (inventoryStatus.healthy /
-                            inventory.length) *
-                          100
-                        : 0
-                    }%`,
-                  }}
-                ></div>
+                <strong>
+                  {inventoryStatus.healthy}
+                </strong>
               </div>
 
               <div className="inventory-status-item">
-                <div className="inventory-status-name">
-                  <span className="status-dot low"></span>
-                  <span>Low Stock</span>
-                </div>
+                <span>Low Stock</span>
 
-                <strong>{inventoryStatus.low}</strong>
-              </div>
-
-              <div className="inventory-progress">
-                <div
-                  className="progress-low"
-                  style={{
-                    width: `${
-                      inventory.length
-                        ? (inventoryStatus.low /
-                            inventory.length) *
-                          100
-                        : 0
-                    }%`,
-                  }}
-                ></div>
+                <strong>
+                  {inventoryStatus.low}
+                </strong>
               </div>
 
               <div className="inventory-status-item">
-                <div className="inventory-status-name">
-                  <span className="status-dot out"></span>
-                  <span>Out of Stock</span>
-                </div>
+                <span>Out of Stock</span>
 
-                <strong>{inventoryStatus.out}</strong>
-              </div>
-
-              <div className="inventory-progress">
-                <div
-                  className="progress-out"
-                  style={{
-                    width: `${
-                      inventory.length
-                        ? (inventoryStatus.out /
-                            inventory.length) *
-                          100
-                        : 0
-                    }%`,
-                  }}
-                ></div>
+                <strong>
+                  {inventoryStatus.out}
+                </strong>
               </div>
 
               <div className="inventory-status-item">
-                <div className="inventory-status-name">
-                  <span className="status-dot expired"></span>
-                  <span>Expired</span>
-                </div>
+                <span>Expired</span>
 
-                <strong>{inventoryStatus.expired}</strong>
+                <strong>
+                  {inventoryStatus.expired}
+                </strong>
               </div>
 
-              <div className="inventory-progress">
-                <div
-                  className="progress-expired"
-                  style={{
-                    width: `${
-                      inventory.length
-                        ? (inventoryStatus.expired /
-                            inventory.length) *
-                          100
-                        : 0
-                    }%`,
-                  }}
-                ></div>
-              </div>
             </div>
           </div>
         )}
+
       </div>
 
-      {/* ================= LOWER GRID ================= */}
+      {/* ================= RECENT SALES ================= */}
 
-      <div className="dashboard-lower-grid">
-        {canViewSales && (
-          <div className="dashboard-card recent-sales-card">
-            <div className="card-header">
-              <div>
-                <h2>Recent Sales</h2>
-                <p>Latest transactions</p>
-              </div>
+      {canViewSales && (
+        <div className="dashboard-card dashboard-full-card">
 
-              <a href="/sales" className="view-all-link">
-                View all →
-              </a>
-            </div>
-
-            {recentSales.length === 0 ? (
-              <div className="dashboard-empty">
-                <span>🧾</span>
-                <p>No sales recorded yet.</p>
-              </div>
-            ) : (
-              <div className="sales-table-wrapper">
-                <table className="dashboard-table">
-                  <thead>
-                    <tr>
-                      <th>Invoice</th>
-                      <th>Customer</th>
-                      <th>Date</th>
-                      <th>Amount</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {recentSales.map((sale) => (
-                      <tr key={sale.id}>
-                        <td>
-                          <span className="invoice-number">
-                            INV-
-                            {String(sale.id).padStart(4, "0")}
-                          </span>
-                        </td>
-
-                        <td>
-                          <div className="customer-cell">
-                            <div className="customer-avatar">
-                              {sale.customer?.name
-                                ? sale.customer.name
-                                    .charAt(0)
-                                    .toUpperCase()
-                                : "W"}
-                            </div>
-
-                            <span>
-                              {sale.customer?.name ||
-                                "Walk-in Customer"}
-                            </span>
-                          </div>
-                        </td>
-
-                        <td>
-                          {formatDate(sale.billDate)}
-                        </td>
-
-                        <td>
-                          <strong>
-                            {formatCurrency(
-                              Number(sale.grandTotal),
-                            )}
-                          </strong>
-                        </td>
-
-                        <td>
-                          <span className="sale-status">
-                            {sale.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {canViewInventory && (
-          <div className="dashboard-card stock-alert-card">
-            <div className="card-header">
-              <div>
-                <h2>Stock Alerts</h2>
-                <p>Products that need attention</p>
-              </div>
-
-              <a
-                href="/inventory"
-                className="view-all-link"
-              >
-                Inventory →
-              </a>
-            </div>
-
-            <div className="stock-alert-list">
-              {outOfStockProducts.length === 0 &&
-              lowStockProducts.length === 0 &&
-              expiredItems.length === 0 ? (
-                <div className="no-alerts">
-                  <div>✓</div>
-
-                  <strong>Everything looks good</strong>
-
-                  <span>
-                    No stock alerts at the moment.
-                  </span>
-                </div>
-              ) : (
-                <>
-                  {outOfStockProducts
-                    .slice(0, 3)
-                    .map((product) => (
-                      <div
-                        className="stock-alert-item"
-                        key={`out-${product.id}`}
-                      >
-                        <div className="alert-icon out">
-                          !
-                        </div>
-
-                        <div className="alert-product">
-                          <strong>{product.name}</strong>
-                          <span>{product.sku}</span>
-                        </div>
-
-                        <span className="alert-badge out">
-                          Out of stock
-                        </span>
-                      </div>
-                    ))}
-
-                  {lowStockProducts
-                    .slice(0, 3)
-                    .map((product) => (
-                      <div
-                        className="stock-alert-item"
-                        key={`low-${product.id}`}
-                      >
-                        <div className="alert-icon low">
-                          !
-                        </div>
-
-                        <div className="alert-product">
-                          <strong>{product.name}</strong>
-                          <span>{product.sku}</span>
-                        </div>
-
-                        <span className="alert-badge low">
-                          {product.stock} left
-                        </span>
-                      </div>
-                    ))}
-
-                  {expiredItems
-                    .slice(0, 2)
-                    .map((item) => (
-                      <div
-                        className="stock-alert-item"
-                        key={`expired-${item.id}`}
-                      >
-                        <div className="alert-icon expired">
-                          !
-                        </div>
-
-                        <div className="alert-product">
-                          <strong>{item.product.name}</strong>
-
-                          <span>
-                            Batch {item.batchNumber}
-                          </span>
-                        </div>
-
-                        <span className="alert-badge expired">
-                          Expired
-                        </span>
-                      </div>
-                    ))}
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ================= QUICK SUMMARY ================= */}
-
-      <div className="dashboard-summary-strip">
-        {canViewInventory && (
-          <>
-            <div className="summary-item">
-              <span className="summary-icon">📦</span>
-
-              <div>
-                <strong>{totalInventoryUnits}</strong>
-                <span>Total Units</span>
-              </div>
-            </div>
-
-            <div className="summary-divider"></div>
-          </>
-        )}
-
-        {canViewSales && (
-          <>
-            <div className="summary-item">
-              <span className="summary-icon">🧾</span>
-
-              <div>
-                <strong>{sales.length}</strong>
-                <span>Total Bills</span>
-              </div>
-            </div>
-
-            <div className="summary-divider"></div>
-          </>
-        )}
-
-        {canViewCustomers && (
-          <>
-            <div className="summary-item">
-              <span className="summary-icon">👥</span>
-
-              <div>
-                <strong>{customers.length}</strong>
-                <span>Total Customers</span>
-              </div>
-            </div>
-
-            <div className="summary-divider"></div>
-          </>
-        )}
-
-        {canViewInventory && (
-          <div className="summary-item">
-            <span className="summary-icon">⚠</span>
-
+          <div className="card-header">
             <div>
-              <strong>{expiredItems.length}</strong>
-              <span>Expired Batches</span>
+              <h2>Recent Sales</h2>
+
+              <p>
+                Latest sales transactions
+              </p>
             </div>
           </div>
-        )}
-      </div>
+
+          {recentSales.length === 0 ? (
+            <div className="dashboard-empty">
+              No sales available.
+            </div>
+          ) : (
+            <div className="dashboard-table-wrapper">
+
+              <table className="dashboard-table">
+
+                <thead>
+                  <tr>
+                    <th>Bill ID</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Status</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {recentSales.map((sale) => (
+                    <tr key={sale.id}>
+                      <td>#{sale.id}</td>
+
+                      <td>
+                        {formatDate(
+                          sale.billDate
+                        )}
+                      </td>
+
+                      <td>
+                        {sale.customer?.name ||
+                          "Walk-in Customer"}
+                      </td>
+
+                      <td>
+                        {sale.status}
+                      </td>
+
+                      <td>
+                        {formatCurrency(
+                          Number(
+                            sale.grandTotal || 0
+                          )
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+
+              </table>
+
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ================= STOCK ALERTS ================= */}
+
+      {canViewInventory && (
+        <div className="dashboard-card dashboard-full-card">
+
+          <div className="card-header">
+            <div>
+              <h2>Stock Alerts</h2>
+
+              <p>
+                Products that require attention
+              </p>
+            </div>
+          </div>
+
+          {lowStockProducts.length === 0 &&
+          outOfStockProducts.length === 0 &&
+          expiredItems.length === 0 ? (
+            <div className="dashboard-empty">
+              No stock alerts. Inventory is in good
+              condition.
+            </div>
+          ) : (
+            <div className="stock-alert-list">
+
+              {outOfStockProducts.map(
+                (product) => (
+                  <div
+                    className="stock-alert-item"
+                    key={`out-${product.id}`}
+                  >
+                    <div>
+                      <strong>
+                        {product.name}
+                      </strong>
+
+                      <span>
+                        SKU: {product.sku}
+                      </span>
+                    </div>
+
+                    <span>
+                      Out of Stock
+                    </span>
+                  </div>
+                )
+              )}
+
+              {lowStockProducts.map(
+                (product) => (
+                  <div
+                    className="stock-alert-item"
+                    key={`low-${product.id}`}
+                  >
+                    <div>
+                      <strong>
+                        {product.name}
+                      </strong>
+
+                      <span>
+                        SKU: {product.sku}
+                      </span>
+                    </div>
+
+                    <span>
+                      {product.stock} units left
+                    </span>
+                  </div>
+                )
+              )}
+
+              {expiredItems.slice(0, 6).map(
+                (item) => (
+                  <div
+                    className="stock-alert-item"
+                    key={`expired-${item.id}`}
+                  >
+                    <div>
+                      <strong>
+                        {item.product.name}
+                      </strong>
+
+                      <span>
+                        Batch: {item.batchNumber}
+                      </span>
+                    </div>
+
+                    <span>
+                      Expired
+                    </span>
+                  </div>
+                )
+              )}
+
+            </div>
+          )}
+        </div>
+      )}
+
     </div>
   );
 };
 
 export default Dashboard;
-

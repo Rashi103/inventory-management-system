@@ -1,4 +1,3 @@
-
 import { Router } from "express";
 
 import {
@@ -8,6 +7,7 @@ import {
   getSalesSummary,
   getProductSalesSummary,
   getCustomerPurchaseSummary,
+  getSalesPeriodReport,
 } from "../controllers/report.controller";
 
 import {
@@ -22,11 +22,7 @@ router.get(
   "/stock",
   authenticateToken,
   authorizeRoles("Manager", "Accountant"),
-  (_req, res) => {
-    res.json({
-      message: "Reports route is working"
-    });
-  }
+  getStockSummary
 );
 
 // Low stock report
@@ -45,9 +41,18 @@ router.get(
   getExpiredInventory
 );
 
-// Sales summary
+// Sales period report
+// Supports: daily, weekly, monthly, yearly
 router.get(
   "/sales",
+  authenticateToken,
+  authorizeRoles("Manager", "Sales Executive", "Accountant"),
+  getSalesPeriodReport
+);
+
+// General sales summary
+router.get(
+  "/sales-summary",
   authenticateToken,
   authorizeRoles("Manager", "Accountant"),
   getSalesSummary

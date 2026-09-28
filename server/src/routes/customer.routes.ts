@@ -1,7 +1,9 @@
-
 import { Router } from "express";
 
-import { getCustomers } from "../controllers/customer.controller";
+import {
+  getCustomers,
+  createCustomer,
+} from "../controllers/customer.controller";
 
 import {
   authenticateToken,
@@ -18,5 +20,12 @@ router.get(
   getCustomers
 );
 
-export default router;
+// Add customer
+router.post(
+  "/",
+  authenticateToken,
+  authorizeRoles("Manager", "Sales Executive"),
+  createCustomer
+);
 
+export default router;
